@@ -1,0 +1,46 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create
+  datasource:
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/configurador_campoaras
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      connection-timeout: 60000
+      maximum-pool-size: 5
+#  mail:
+#    host: smtp.gmail.com
+#    port: 587
+#    username: ${MAIL_USERNAME}
+#    password: ${MAIL_PASSWORD}
+#    properties:
+#      mail:
+#        smtp:
+#          auth: true
+#          starttls:
+#            enable: true
+  #server:
+    #address: 192.168.1.169
+logging:
+  level:
+    root: INFO         
+    
+  file:
+    name: logs/campoaras.log
+  logback:                
+  log4j2:                 
+    config: classpath:log4j2-spring.xml
+
+jwt:
+  secret-key: ${CPWT_KEY}
+  acces-token-expiration: 10.800.000
+  refresh-token-expiration: 2592000000
+
+url-cors: ${URL_CORS}
+
+crypto:
+  password: ${PASSWORD}
+  salt: ${SALT}
+

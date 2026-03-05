@@ -1,0 +1,2 @@
+org.springframework.context.ApplicationContextInitializer=\
+es.aag.configurador.campoaras.configurations.DotEnvInitializer
