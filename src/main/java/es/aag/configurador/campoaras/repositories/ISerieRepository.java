@@ -6,5 +6,5 @@ import es.aag.configurador.campoaras.entities.Serie;
 
 public interface ISerieRepository extends JpaRepository<Serie, String>
 {
-	Serie findByNombre(String nombre);
+	Serie findByVariante(String variante);
 }

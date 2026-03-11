@@ -27,7 +27,7 @@ public class Serie
 	private String uuid;
 	
 	@Column(nullable = false)
-	private String nombre;
+	private String variante;
 	
 	@Column(nullable = false)
 	private String modulo;

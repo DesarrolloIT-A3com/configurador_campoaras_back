@@ -1,5 +1,7 @@
 package es.aag.configurador.campoaras.entities;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -39,6 +41,12 @@ public class Usuario
 	private String comercial;
 	
 	@Column
+	private LocalDateTime acceso;
+	
+	@Column(nullable = false)
+	private boolean verificado;
+	
+	@Column(nullable = false)
 	private String USRToken;
 	
 	@ManyToOne(fetch = FetchType.EAGER)
