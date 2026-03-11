@@ -1,0 +1,520 @@
+openapi: 3.0.3
+
+info:
+  title: General Controller Capoaras API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/openapi/docs
+    description: Documentación de endpoints de desarrollo
+
+security:
+  - cookieAuth: []
+
+components:
+
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: JWT
+
+  # Esquemas reutilizables
+  schemas:
+    # Esquema de errores
+    CPException:
+      type: object
+      required:
+          - code
+          - message
+      properties:
+        code:
+          type: integer
+          description: Código de error
+          example: 403
+        message:
+          type: string
+          description: Mensaje de error
+          example: "Forbidden: Access is denied"
+        cause:
+          type: object
+          nullable: true
+          description: Detalles adicionales del error normalmente suele ser otra excepcion de Java
+          properties:
+            exception:
+              type: string
+              description: Nombre de la clase de la excepción
+              example: "java.lang.NullPointerException"
+            message:
+              type: string
+              description: Mensaje de la excepción
+              example: "Null reference encountered"
+    
+    Frente:
+      type: object
+      required:
+        - nombre
+        - referencia
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del frente
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        nombre:
+          type: string
+          description: Nombre del frente
+          example: "Frente Principal"
+        referencia:
+          type: string
+          description: Referencia única del frente
+          example: "IN"
+    
+    Acabado:
+      type: object
+      required:
+        - nombre
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del acabado
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        nombre:
+          type: string
+          description: Nombre del acabado
+          example: "Acabado Mate"
+        tipos:
+          type: array
+          items:
+            type: string
+          description: Lista de tipos asociados al acabado
+          example: ["Natural", "Seda"]
+    
+    Color:
+      type: object
+      required:
+        - nombre
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del color
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        nombre:
+          type: string
+          description: Nombre del color
+          example: "Rojo"
+
+    ProductoConfigurado:
+      type: object
+      required:
+        - precioArmazon
+        - tipoAcabadoArmazon
+        - precioFrente
+        - tipoAcabadoFrente
+        - precioTirador
+        - tipoAcabadoTirador
+        - precioRegleta
+        - tipoAcabadoRegleta
+        - cantidad
+        - acabado
+        - colorAcabado
+        - frente
+        - acabadoFrente
+        - colorFrente
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del producto configurado
+          example: "123e4567-e89b-12d3-a456-426614174000"
+          nullable: true
+        precioArmazon:
+          type: number
+          format: float
+          description: Precio del armazón
+          example: 150.0
+        tipoAcabadoArmazon:
+          type: string
+          description: Tipo de acabado del armazón
+          example: "Mate"
+        precioFrente:
+          type: number
+          format: float
+          description: Precio del frente
+          example: 200.0
+        tipoAcabadoFrente:
+          type: string
+          description: Tipo de acabado del frente
+          example: "Brillante"
+        precioTirador:
+          type: number
+          format: float
+          description: Precio del tirador
+          example: 50.0
+        tipoAcabadoTirador:
+          type: string
+          description: Tipo de acabado del tirador
+          example: "Cromado"
+        precioRegleta:
+          type: number
+          format: float
+          description: Precio de la regleta
+          example: 30.0
+        tipoAcabadoRegleta:
+          type: string
+          description: Tipo de acabado de la regleta
+          example: "Madera"
+        cantidad:
+          type: integer
+          description: Cantidad de productos configurados
+          example: 10
+        acabado:
+          $ref: '#/components/schemas/Acabado'
+        colorAcabado:
+          $ref: '#/components/schemas/Color'
+        frente:
+          $ref: '#/components/schemas/Frente'
+        acabadoFrente:
+          $ref: '#/components/schemas/Acabado'
+        colorFrente:
+          $ref: '#/components/schemas/Color'
+        acabadoRegleta:
+          $ref: '#/components/schemas/Acabado'
+          nullable: true
+        colorRegleta:
+          $ref: '#/components/schemas/Color'
+          nullable: true
+        acabadoTirador:
+          $ref: '#/components/schemas/Acabado'
+          nullable: true
+        colorTirador:
+          $ref: '#/components/schemas/Color'
+          nullable: true
+
+    Usuario:
+      type: object
+      required:
+          - email
+          - username
+          - password
+      properties:
+        uuid:
+          type: string
+          description: UUID del usuario
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          description: Correo electrónico del usuario
+          example: "user@example.com"
+        username:
+          type: string
+          description: Nombre de usuario
+          example: "user123"
+        password:
+          type: string
+          description: Contraseña del usuario (en texto plano solo para creación o actualización) en el servidor se hashea.
+          example: "P@ssw0rd!"
+        descuento:
+          type: number
+          description: Descuento aplicado al usuario
+          example: 15
+        comercial:
+          type: string
+          description: Correo electrónico del comercial asignado al ususario
+          example: "comercial@example.com"
+        acceso:
+          type: string
+          description: Fecha y hora del último acceso del usuario
+          example: "2024-06-01T12:00:00Z"
+        verificado:
+          type: boolean
+          description: Indica si el usuario ha sido verificado por un admin
+          example: true
+        usrToken:
+          type: string
+          description: Token de identificación del usuario para logs.
+          example: "USR-1ab2345"
+        rol:
+          type: object
+          properties:
+            nombre:
+              type: string
+              description: Nombre del rol del usuario
+              example: "ADMIN"
+            id:
+              type: integer
+              description: ID del rol del usuario
+              example: 1
+    
+    Pedido:
+      type: object
+      required:
+        - fecha
+        - referencia
+        - productos
+        - usuario
+      properties:
+        id:
+          type: string
+          description: UUID del pedido
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        fecha:
+          type: string
+          format: date-time
+          description: Fecha y hora del pedido
+          example: "2024-06-01T12:00:00Z"
+        referencia:
+          type: string
+          description: Referencia del pedido, lo debe de introducir el usuario
+          example: "REF-001"
+        productos:
+          type: array
+          description: Lista de productos configurados en el pedido
+          items:
+            $ref: '#/components/schemas/ProductoConfigurado'
+        usuario:
+          $ref: '#/components/schemas/Usuario'
+
+  parameters:
+    userId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: UUID del usuario
+      example: "123e4567-e89b-12d3-a456-426614174000"
+  
+  responses:
+    Unauthorized:
+      description: No autorizado -- Cookie JWT ausente o inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 401
+            message: "Unauthorized: JWT cookie is missing or invalid"
+    Forbidden:
+      description: Prohibido -- El usuario no tiene el rol necesario o ha realizado acciones no permitidas
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 403
+            message: "Forbidden: Access is denied"    
+    NotFound:
+      description: No encontrado -- El recurso solicitado no existe
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 404
+            message: "Not Found: The requested resource does not exist"
+    BadRequest:
+      description: Solicitud incorrecta -- El cliente ha enviado datos inválidos o mal formados
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 400
+            message: "Bad Request: The request is invalid or malformed"
+    InternalServerError:
+      description: Error interno del servidor -- Ocurrió un error inesperado en el servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 500
+            message: "Internal Server Error: An unexpected error occurred on the server"
+    ServerNotAvailable:
+      description: Servicio no disponible -- El servidor no puede manejar la solicitud en este momento
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 503
+            message: "Service Unavailable: The server is currently unable to handle the request"
+
+
+paths:
+
+  /v1/user:
+    get:
+      tags:
+        - User
+      summary: Obtención de datos básicos de usuario
+      operationId: getUserData
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: "Datos básicos de usuario obtenidos"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email:
+                    type: string
+                    description: email de usuario
+                  username:
+                    type: string
+                    description: nombre de usuario
+                  descuento:
+                    type: number
+                    description: descuento asociado al usuario
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+
+    patch:
+      tags:
+        - User
+      summary: Actualización de datos de usuario (solo se actualiza el username)
+      operationId: uptUserData
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+              properties:
+                username:
+                  type: string
+                  description: Nombre de usuario a editar
+                  example: "User edit"
+      responses:
+        "200":
+          description: "Username actualizado"
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+  /v1/config-product:
+    get:
+      tags:
+        - Product
+      summary: Obtención de productos configurados para realizar un pedido
+      operationId: getConfigureProducts
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: "Productos configurados obtenidos"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductoConfigurado'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+    post:
+      tags: 
+        - Product
+      summary: Configuración de un producto
+      operationId: configProduct
+      security:
+        - cookieAuth: [] 
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoConfigurado'
+      responses:
+        "201":
+          description: "Producto configurado creado"
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+  /v1/order-proposal:
+    post:
+      tags: 
+        - Order
+      summary: Creación de una propuesta de pedido a partir de productos configurados
+      operationId: createOrderProposal
+      security:
+        - cookieAuth: [] 
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pedido'
+      responses:
+        "201":
+          description: "Propuesta de pedido creada"
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+    
+    get:
+      tags:
+        - Order
+      summary: Obtención de propuestas de pedido realizadas por el usuario para su revisión
+      operationId: getOrderProposals
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: "Propuestas de pedido obtenidas"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pedido'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+        

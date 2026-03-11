@@ -1,0 +1,485 @@
+openapi: 3.0.3
+
+
+info:
+  title: Auth Controller Campoaras API
+  description: Endpoints del sistema de autenticación y autorización del configurador de campoaras
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/openapi/docs/
+    description: Documentación de endpoints de desarrollo
+
+security:
+  - cookieAuth: []
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: JWT
+
+  # Esquemas reutilizables
+  schemas:
+    # Esquema de errores
+    CPException:
+      type: object
+      required:
+          - code
+          - message
+      properties:
+        code:
+          type: integer
+          description: Código de error
+          example: 403
+        message:
+          type: string
+          description: Mensaje de error
+          example: "Forbidden: Access is denied"
+        cause:
+          type: object
+          nullable: true
+          description: Detalles adicionales del error normalmente suele ser otra excepcion de Java
+          properties:
+            exception:
+              type: string
+              description: Nombre de la clase de la excepción
+              example: "java.lang.NullPointerException"
+            message:
+              type: string
+              description: Mensaje de la excepción
+              example: "Null reference encountered"
+    
+    # Objeto de ususario
+    UsuarioRegister:
+      type: object
+      required:
+          - email
+          - username
+          - password
+      properties:
+        email:
+          type: string
+          description: Correo electrónico del usuario
+          example: "user@example.com"
+        username:
+          type: string
+          description: Nombre de usuario
+          example: "Usuario"
+        password:
+          type: string
+          description: Contraseñas del usuario
+          example: P@ssw0rd!
+    Usuario:
+      type: object
+      required:
+          - email
+          - username
+          - password
+      properties:
+        uuid:
+          type: string
+          description: UUID del usuario
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          description: Correo electrónico del usuario
+          example: "user@example.com"
+        username:
+          type: string
+          description: Nombre de usuario
+          example: "user123"
+        password:
+          type: string
+          description: Contraseña del usuario (en texto plano solo para creación o actualización) en el servidor se hashea.
+          example: "P@ssw0rd!"
+        descuento:
+          type: number
+          description: Descuento aplicado al usuario
+          example: 15
+        comercial:
+          type: string
+          description: Correo electrónico del comercial asignado al ususario
+          example: "comercial@example.com"
+        acceso:
+          type: string
+          description: Fecha y hora del último acceso del usuario
+          example: "2024-06-01T12:00:00Z"
+        verificado:
+          type: boolean
+          description: Indica si el usuario ha sido verificado por un admin
+          example: true
+        usrToken:
+          type: string
+          description: Token de identificación del usuario para logs.
+          example: "USR-1ab2345"
+        rol:
+          type: object
+          properties:
+            nombre:
+              type: string
+              description: Nombre del rol del usuario
+              example: "ADMIN"
+            id:
+              type: integer
+              description: ID del rol del usuario
+              example: 1
+    UsuarioGet:
+      type: object
+      properties:
+        uuid:
+          type: string
+          description: UUID del usuario
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          description: Correo electrónico del usuario
+          example: "user@example.com"
+        username:
+          type: string
+          description: Nombre de usuario
+          example: "user123"
+
+  parameters:
+    verificationCode:
+      name: verificationCode
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Código de verificación enviado al correo del usuario
+      example: "ABC123"
+    userEmail:
+      name: userEmail
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Email del usuario
+      example: "user@example.com"
+    userId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: UUID del usuario a eliminar
+      example: "123e4567-e89b-12d3-a456-426614174000"
+    username:
+      name: username
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Nombre de usuario para confirmar la eliminación de la cuenta
+      example: "john_doe"
+  
+   # --- Respuestas reutilizables ---
+  responses:
+    Unauthorized:
+      description: No autorizado -- Cookie JWT ausente o inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 401
+            message: "Unauthorized: JWT cookie is missing or invalid"
+    Forbidden:
+      description: Prohibido -- El usuario no tiene el rol necesario o ha realizado acciones no permitidas
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 403
+            message: "Forbidden: Access is denied"    
+    NotFound:
+      description: No encontrado -- El recurso solicitado no existe
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 404
+            message: "Not Found: The requested resource does not exist"
+    BadRequest:
+      description: Solicitud incorrecta -- El cliente ha enviado datos inválidos o mal formados
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 400
+            message: "Bad Request: The request is invalid or malformed"
+    InternalServerError:
+      description: Error interno del servidor -- Ocurrió un error inesperado en el servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 500
+            message: "Internal Server Error: An unexpected error occurred on the server"
+    ServerNotAvailable:
+      description: Servicio no disponible -- El servidor no puede manejar la solicitud en este momento
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 503
+            message: "Service Unavailable: The server is currently unable to handle the request"
+
+paths:
+
+  /v1/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Registro de nuevo usuario en el sistema se envía a verificación para posteriormente introducir un código y añadir el usuario definitivo a la base de datos
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioRegister'
+      responses:
+        "200":
+          description: Codigo de verificacion enviado
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+  /v1/auth/verify/{verificationCode}:
+    post:
+      tags:
+        - Auth
+      summary: Verificación del código enviado al correo del usuario para completar el registro
+      operationId: verify
+      parameters:
+        - $ref: '#/components/parameters/verificationCode'
+      responses:
+        "200":
+          description: Usuario verificado exitosamente
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+  /v1/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Inicio de sesión de usuario, se devuelve una cookie JWT para autenticación en futuras solicitudes
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  description: Correo electrónico del usuario
+                  example: "user@example.com"
+                password:
+                  type: string
+                  description: Contraseña del usuario
+                  example: "password123"
+      responses:
+        "200":
+          description: Inicio de sesión exitoso, cookie JWT establecida
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+
+  /v1/auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Cierre de sesión del usuario, se elimina la cookie JWT
+      operationId: logout
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Cierre de sesión exitoso, cookie JWT eliminada
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+
+  /v1/auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Obtención de los datos del usuario autenticado a través del JWT en la cookie
+      operationId: getCurrentUser
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Datos del usuario autenticado obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsuarioGet'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+  /v1/auth/capabilities:
+    get:
+      tags:
+        - Auth
+      summary: Obtención de las capacidades y permisos del usuario autenticado para mostrar u ocultar funcionalidades en el frontend
+      operationId: getCapabilities
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: "Capacidades de usuario"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  generalAccess:
+                    type: boolean
+                    description: Acceso general de usuario
+                    example: true
+                  adminAccess:
+                    type: boolean
+                    description: Indica si el usuario tiene permiso para acceder al panel de administración
+                    example: false
+                  readAdmins:
+                    type: boolean
+                    description: Indica si el usuario tiene permiso para  ver a otros administradores
+                    example: false
+                  writeAdmins:
+                    type: boolean
+                    description: Indica si el usuario tiene permiso para editar administradores
+                    example: false
+                  readLogs:
+                    type: boolean
+                    description: Indica si el usuario tiene permiso para descargarse el fichero de logs
+                    example: false
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+  /v1/auth/forget-password/{userEmail}:
+    post:
+      tags:
+        - Auth
+      summary: Inicio del proceso de recuperación de contraseña, se envía un código de verificación al correo del usuario para posteriormente verificarlo y permitirle establecer una nueva contraseña
+      operationId: forgetPassword
+      parameters:
+        - $ref: '#/components/parameters/userEmail'
+      responses:
+        "200":
+          description: Código de verificación enviado al correo del usuario
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+  /v1/auth/reset-password/{verificationCode}:
+    post:
+      tags:
+        - Auth
+      summary: Verificación del código enviado al correo del usuario para permitirle establecer una nueva contraseña
+      operationId: resetPassword
+      parameters:
+        - $ref: '#/components/parameters/verificationCode'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - newPassword
+              properties:
+                newPassword:
+                  type: string
+                  description: Nueva contraseña que el usuario desea establecer
+                  example: "N3wP@ssw0rd!"
+      responses:
+        "200":
+          description: Contraseña restablecida exitosamente
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+  /v1/auth/delete-account/{username}:
+    delete:
+      tags:
+        - Auth
+      summary: Eliminación de la cuenta del usuario autenticado, se avisará al usuario y si está de acuerdo debe de introducir su username como confirmación
+      operationId: deleteAccount
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/username'
+      responses:
+        "200":
+          description: Cuenta eliminada exitosamente
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'

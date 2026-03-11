@@ -1,0 +1,930 @@
+openapi: 3.0.3
+
+info:
+  title: Gestión de contenido Controller Campoaras API
+  description: Endpoints para le gestión de contenido del configurador, entre ellos añadir productos, series, relaciones y combinaciones.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/openapi/docs/
+    description: Documentación de endpoints de desarrollo
+ 
+#----------------------------------------------
+# Seguridad global: cookie JWT
+#----------------------------------------------
+
+security:
+  - cookieAuth: []
+
+components: 
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: JWT 
+
+  # Esquemas reutilizables
+  schemas:
+    # Esquema de errores
+    CPException:
+      type: object
+      required:
+          - code
+          - message
+      properties:
+        code:
+          type: integer
+          description: Código de error
+          example: 403
+        message:
+          type: string
+          description: Mensaje de error
+          example: "Forbidden: Access is denied"
+        cause:
+          type: object
+          nullable: true
+          description: Detalles adicionales del error normalmente suele ser otra excepcion de Java
+          properties:
+            exception:
+              type: string
+              description: Nombre de la clase de la excepción
+              example: "java.lang.NullPointerException"
+            message:
+              type: string
+              description: Mensaje de la excepción
+              example: "Null reference encountered"
+    
+    Producto:
+      type: object
+      required:
+        - nombre
+        - tipo
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del producto
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        nombre:
+          type: string
+          description: Nombre del producto
+          example: "Aqua"
+        tipo:
+          type: string
+          description: Tipo del producto
+          example: "Mueble"
+        cajon:
+          type: string
+          description: Si el tipo del producto es un mueble se debe de indicar la marca que los provee
+          example: "Hetttich"
+    
+    Serie:
+      type: object
+      required:
+        - variante
+        - modulo
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único de la variante del producto
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        variante:
+          type: string
+          description: Variante del producto
+          example: "Portalavabo 1 cajón"
+        modulo:
+          type: string
+          description: Modulo que porta la variante
+          example: "Mueble"
+        extra:
+          type: string
+          description: Extras que porta la variante del producto
+    
+    Frente:
+      type: object
+      required:
+        - nombre
+        - referencia
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del frente
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        nombre:
+          type: string
+          description: Nombre del frente
+          example: "Frente Principal"
+        referencia:
+          type: string
+          description: Referencia única del frente
+          example: "IN"
+    
+    Acabado:
+      type: object
+      required:
+        - nombre
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del acabado
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        nombre:
+          type: string
+          description: Nombre del acabado
+          example: "Acabado Mate"
+        tipos:
+          type: array
+          items:
+            type: string
+          description: Lista de tipos asociados al acabado
+          example: ["Natural", "Seda"]
+    
+    Color:
+      type: object
+      required:
+        - nombre
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del color
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        nombre:
+          type: string
+          description: Nombre del color
+          example: "Rojo"
+
+    Configuracion:
+      type: object
+      required:
+        - referencia
+        - fondo
+        - ancho
+        - alto
+        - armazon
+        - colorArmazon
+        - frente
+        - armazon_frente
+        - colorFrente
+        - serie
+      properties:
+        referencia:
+          type: string
+          description: Referencia única de la configuración
+          example: "CONF12345"
+        fondo:
+          type: number
+          format: float
+          description: Fondo de la configuración
+          example: 50.0
+        ancho:
+          type: number
+          format: float
+          description: Ancho de la configuración
+          example: 100.0
+        alto:
+          type: number
+          format: float
+          description: Alto de la configuración
+          example: 200.0
+        armazon:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: number
+              format: float
+          description: Datos del armazón en formato JSON
+          example: [{"x": 10.0, "y": 20.0}]
+        colorArmazon:
+          $ref: '#/components/schemas/Color'
+        frente:
+          $ref: '#/components/schemas/Frente'
+        armazon_frente:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: number
+              format: float
+          description: Datos del armazón del frente en formato JSON
+          example: [{"x": 15.0, "y": 25.0}]
+        colorFrente:
+          $ref: '#/components/schemas/Color'
+        tirador:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: number
+              format: float
+          description: Datos del tirador en formato JSON
+          example: [{"x": 5.0, "y": 10.0}]
+          nullable: true
+        regleta:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: number
+              format: float
+          description: Datos de la regleta en formato JSON
+          example: [{"x": 3.0, "y": 8.0}]
+          nullable: true
+        colorTirador:
+          $ref: '#/components/schemas/Color'
+          nullable: true
+        colorRegleta:
+          $ref: '#/components/schemas/Color'
+          nullable: true
+        serie:
+          $ref: '#/components/schemas/Serie'
+
+    ProductoConfigurado:
+      type: object
+      required:
+        - precioArmazon
+        - tipoAcabadoArmazon
+        - precioFrente
+        - tipoAcabadoFrente
+        - precioTirador
+        - tipoAcabadoTirador
+        - precioRegleta
+        - tipoAcabadoRegleta
+        - cantidad
+        - acabado
+        - colorAcabado
+        - frente
+        - acabadoFrente
+        - colorFrente
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del producto configurado
+          example: "123e4567-e89b-12d3-a456-426614174000"
+          nullable: true
+        precioArmazon:
+          type: number
+          format: float
+          description: Precio del armazón
+          example: 150.0
+        tipoAcabadoArmazon:
+          type: string
+          description: Tipo de acabado del armazón
+          example: "Mate"
+        precioFrente:
+          type: number
+          format: float
+          description: Precio del frente
+          example: 200.0
+        tipoAcabadoFrente:
+          type: string
+          description: Tipo de acabado del frente
+          example: "Brillante"
+        precioTirador:
+          type: number
+          format: float
+          description: Precio del tirador
+          example: 50.0
+        tipoAcabadoTirador:
+          type: string
+          description: Tipo de acabado del tirador
+          example: "Cromado"
+        precioRegleta:
+          type: number
+          format: float
+          description: Precio de la regleta
+          example: 30.0
+        tipoAcabadoRegleta:
+          type: string
+          description: Tipo de acabado de la regleta
+          example: "Madera"
+        cantidad:
+          type: integer
+          description: Cantidad de productos configurados
+          example: 10
+        acabado:
+          $ref: '#/components/schemas/Acabado'
+        colorAcabado:
+          $ref: '#/components/schemas/Color'
+        frente:
+          $ref: '#/components/schemas/Frente'
+        acabadoFrente:
+          $ref: '#/components/schemas/Acabado'
+        colorFrente:
+          $ref: '#/components/schemas/Color'
+        acabadoRegleta:
+          $ref: '#/components/schemas/Acabado'
+          nullable: true
+        colorRegleta:
+          $ref: '#/components/schemas/Color'
+          nullable: true
+        acabadoTirador:
+          $ref: '#/components/schemas/Acabado'
+          nullable: true
+        colorTirador:
+          $ref: '#/components/schemas/Color'
+          nullable: true
+  
+  responses:
+    Unauthorized:
+      description: No autorizado -- Cookie JWT ausente o inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 401
+            message: "Unauthorized: JWT cookie is missing or invalid"
+    Forbidden:
+      description: Prohibido -- El usuario no tiene el rol necesario o ha realizado acciones no permitidas
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 403
+            message: "Forbidden: Access is denied"    
+    NotFound:
+      description: No encontrado -- El recurso solicitado no existe
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 404
+            message: "Not Found: The requested resource does not exist"
+    BadRequest:
+      description: Solicitud incorrecta -- El cliente ha enviado datos inválidos o mal formados
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 400
+            message: "Bad Request: The request is invalid or malformed"
+    InternalServerError:
+      description: Error interno del servidor -- Ocurrió un error inesperado en el servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 500
+            message: "Internal Server Error: An unexpected error occurred on the server"
+    ServerNotAvailable:
+      description: Servicio no disponible -- El servidor no puede manejar la solicitud en este momento
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 503
+            message: "Service Unavailable: The server is currently unable to handle the request"
+   
+  parameters:
+    productId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: UUID del producto
+      example: "123e4567-e89b-12d3-a456-426614174000"
+    serieId:
+      name: serieId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: UUID de la serie
+      example: "123e4567-e89b-12d3-a456-426614174000"
+    frenteId:
+      name: frenteId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: UUID del frente
+      example: "123e4567-e89b-12d3-a456-426614174000"
+    acabadoId:
+      name: acabadoId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: UUID del acabado
+      example: "123e4567-e89b-12d3-a456-426614174000"
+    colorId:
+      name: colorId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: UUID del color
+      example: "123e4567-e89b-12d3-a456-426614174000"
+    configuracionId:
+      name: configuracionId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Id de referencia de configuración
+      example: "1705"
+    productoConfiguradoId:
+      name: productoConfiguradoId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: UUID del producto configurado
+      example: "123e4567-e89b-12d3-a456-426614174000"
+
+paths:
+
+  /v1/managment/products:
+    post:
+      summary: Añadir un nuevo producto
+      description: Endpoint para añadir un nuevo producto al sistema.
+      tags:
+        - Productos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Producto'
+      responses:
+        '201':
+          description: Producto creado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/products/{productId}:
+    patch:
+      summary: Editar un producto
+      description: Endpoint para editar un producto del sistema, este luego se debe de actualizar en todas las referencias
+      tags:
+        - Productos
+      parameters:
+        - $ref: '#/components/parameters/productId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Producto'
+      responses:
+        '201':
+          description: Producto editado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Eliminar un producto
+      description: Endpoint para eliminar un producto del sistema, se eliminará de todas las referencias
+      tags:
+        - Productos
+      parameters:
+        - $ref: '#/components/parameters/productId'
+      responses:
+        '204':
+          description: Producto eliminado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/series:
+    post:
+      summary: Añadir una nueva serie
+      description: Endpoint para añadir una nueva serie al sistema.
+      tags:
+        - Series
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Serie'
+      responses:
+        '201':
+          description: Serie creada exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/series/{serieId}:
+    patch:
+      summary: Editar una serie
+      description: Endpoint para editar una serie del sistema, esta luego se debe de actualizar en todas las referencias
+      tags:
+        - Series
+      parameters:
+        - $ref: '#/components/parameters/serieId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Serie'
+      responses:
+        '201':
+          description: Serie editada exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Eliminar una serie
+      description: Endpoint para eliminar una serie del sistema, se eliminará de todas las referencias
+      tags:
+        - Series
+      parameters:
+        - $ref: '#/components/parameters/serieId'
+      responses:
+        '204':
+          description: Serie eliminada exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/frentes:
+    post:
+      summary: Añadir un nuevo frente
+      description: Endpoint para añadir un nuevo frente al sistema.
+      tags:
+        - Frentes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Frente'
+      responses:
+        '201':
+          description: Frente creado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/frentes/{frenteId}:
+    patch:
+      summary: Editar un frente
+      description: Endpoint para editar un frente del sistema, este luego se debe de actualizar en todas las referencias
+      tags:
+        - Frentes
+      parameters:
+        - $ref: '#/components/parameters/frenteId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Frente'
+      responses:
+        '201':
+          description: Frente editado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Eliminar un frente
+      description: Endpoint para eliminar un frente del sistema, se eliminará de todas las referencias
+      tags:
+        - Frentes
+      parameters:
+        - $ref: '#/components/parameters/frenteId'
+      responses:
+        '204':
+          description: Frente eliminado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/acabados:
+    post:
+      summary: Añadir un nuevo acabado
+      description: Endpoint para añadir un nuevo acabado al sistema.
+      tags:
+        - Acabados
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Acabado'
+      responses:
+        '201':
+          description: Acabado creado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/acabados/{acabadoId}:
+    patch:
+      summary: Editar un acabado
+      description: Endpoint para editar un acabado del sistema, este luego se debe de actualizar en todas las referencias
+      tags:
+        - Acabados
+      parameters:
+        - $ref: '#/components/parameters/acabadoId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Acabado'
+      responses:
+        '201':
+          description: Acabado editado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Eliminar un acabado
+      description: Endpoint para eliminar un acabado del sistema, se eliminará de todas las referencias
+      tags:
+        - Acabados
+      parameters:
+        - $ref: '#/components/parameters/acabadoId'
+      responses:
+        '204':
+          description: Acabado eliminado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/colores:
+    post:
+      summary: Añadir un nuevo color
+      description: Endpoint para añadir un nuevo color al sistema.
+      tags:
+        - Colores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Color'
+      responses:
+        '201':
+          description: Color creado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/colores/{colorId}:
+    patch:
+      summary: Editar un color
+      description: Endpoint para editar un color del sistema, este luego se debe de actualizar en todas las referencias
+      tags:
+        - Colores
+      parameters:
+        - $ref: '#/components/parameters/colorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Color'
+      responses:
+        '201':
+          description: Color editado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Eliminar un color
+      description: Endpoint para eliminar un color del sistema, se eliminará de todas las referencias
+      tags:
+        - Colores
+      parameters:
+        - $ref: '#/components/parameters/colorId'
+      responses:
+        '204':
+          description: Color eliminado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    
+  /v1/managment/configuracion:
+    post:
+      summary: Añadir una nueva configuración
+      description: Endpoint para añadir una nueva configuración al sistema.
+      tags:
+        - Configuración
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Configuracion'
+      responses:
+        '201':
+          description: Configuración creada exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/configuracion/{configuracionId}:
+    patch:
+      summary: Editar una configuración
+      description: Endpoint para editar una configuración del sistema, esta luego se debe de actualizar en todas las referencias
+      tags:
+        - Configuración
+      parameters:
+        - $ref: '#/components/parameters/configuracionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Configuracion'
+      responses:
+        '201':
+          description: Configuración editada exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Eliminar una configuración
+      description: Endpoint para eliminar una configuración del sistema, se eliminará de todas las referencias
+      tags:
+        - Configuración
+      parameters:
+        - $ref: '#/components/parameters/configuracionId'
+      responses:
+        '204':
+          description: Configuración eliminada exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/producto-configurado:
+    post:
+      summary: Añadir un nuevo producto configurado
+      description: Endpoint para añadir un nuevo producto configurado al sistema.
+      tags:
+        - Producto Configurado
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoConfigurado'
+      responses:
+        '201':
+          description: Producto configurado creado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/producto-configurado/{productoConfiguradoId}:
+    patch:
+      summary: Editar un producto configurado
+      description: Endpoint para editar un producto configurado del sistema, este luego se debe de actualizar en todas las referencias
+      tags:
+        - Producto Configurado
+      parameters:
+        - $ref: '#/components/parameters/productoConfiguradoId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoConfigurado'
+      responses:
+        '201':
+          description: Producto configurado editado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Eliminar un producto configurado
+      description: Endpoint para eliminar un producto configurado del sistema, se eliminará de todas las referencias
+      tags:
+        - Producto Configurado
+      parameters:
+        - $ref: '#/components/parameters/productoConfiguradoId'
+      responses:
+        '204':
+          description: Producto configurado eliminado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'

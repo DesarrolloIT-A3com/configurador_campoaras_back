@@ -21,8 +21,28 @@ spring:
 #          auth: true
 #          starttls:
 #            enable: true
-  #server:
-    #address: 192.168.1.169
+  server:
+    address: 192.168.1.169
+    
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls-primary-name: Admin
+    urls:
+      - name: Auth
+        url: /openapi/auth.yaml
+      - name: Admin
+        url: /openapi/admin.yaml
+      - name: Managment
+        url: /openapi/managment.yaml
+      - name: General
+        url: /openapi/general.yaml
+       
+    operationsSorter: method
+    tagsSorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
 logging:
   level:
     root: INFO         

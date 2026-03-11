@@ -1,0 +1,312 @@
+openapi: 3.0.3
+
+info:
+  title: Admin Controller Campoaras API
+  description: Endpoints del panel de administración del configurador de campoaras, para su acceso se requiere de rol SUPERADMIN | ADMIN más cookie JWT
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/openapi/docs/
+    description: Documentación de endpoints de desarrollo
+
+#----------------------------------------------
+# Seguridad global: cookie JWT
+#----------------------------------------------
+
+security:
+  - cookieAuth: []
+
+components: 
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: JWT
+
+  # Esquemas reutilizables
+  schemas:
+    # Esquema de errores
+    CPException:
+      type: object
+      required:
+          - code
+          - message
+      properties:
+        code:
+          type: integer
+          description: Código de error
+          example: 403
+        message:
+          type: string
+          description: Mensaje de error
+          example: "Forbidden: Access is denied"
+        cause:
+          type: object
+          nullable: true
+          description: Detalles adicionales del error normalmente suele ser otra excepcion de Java
+          properties:
+            exception:
+              type: string
+              description: Nombre de la clase de la excepción
+              example: "java.lang.NullPointerException"
+            message:
+              type: string
+              description: Mensaje de la excepción
+              example: "Null reference encountered"
+    
+    # Objeto de ususario
+    Usuario:
+      type: object
+      properties:
+        uuid:
+          type: string
+          description: UUID del usuario
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          description: Correo electrónico del usuario
+          example: "user@example.com"
+        username:
+          type: string
+          description: Nombre de usuario
+          example: "user123"
+        descuento:
+          type: number
+          description: Descuento aplicado al usuario
+          example: 15
+        comercial:
+          type: string
+          description: Correo electrónico del comercial asignado al ususario
+          example: "comercial@example.com"
+        acceso:
+          type: string
+          description: Fecha y hora del último acceso del usuario
+          example: "2024-06-01T12:00:00Z"
+        verificado:
+          type: boolean
+          description: Indica si el usuario ha sido verificado por un admin
+          example: true
+    LogFile:
+      type: string
+      format: binary
+      description: Archivo de log del configurador de campoaras
+      example: "2026-03-06T10:23:11.933+01:00  INFO 4560 --- [  restartedMain] e.a.c.c.ConfiguradorCampoarasApplication : [AVISO] El usuario USR-12345 ha accedido con un JWT erroneo -- [SEGURIDAD] IP:192.168.1.1 | Accept-Language:es-Es | ... |"
+
+
+  parameters:
+    userId:
+      name: userId
+      in: path
+      description: UUID del usuario
+      required: true
+      schema:
+        type: string
+        example: "123e4567-e89b-12d3-a456-426614174000"
+
+
+  # --- Respuestas reutilizables ---
+  responses:
+    Unauthorized:
+      description: No autorizado -- Cookie JWT ausente o inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 401
+            message: "Unauthorized: JWT cookie is missing or invalid"
+    Forbidden:
+      description: Prohibido -- El usuario no tiene el rol necesario o ha realizado acciones no permitidas
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 403
+            message: "Forbidden: Access is denied"    
+    NotFound:
+      description: No encontrado -- El recurso solicitado no existe
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 404
+            message: "Not Found: The requested resource does not exist"
+    BadRequest:
+      description: Solicitud incorrecta -- El cliente ha enviado datos inválidos o mal formados
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 400
+            message: "Bad Request: The request is invalid or malformed"
+    InternalServerError:
+      description: Error interno del servidor -- Ocurrió un error inesperado en el servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 500
+            message: "Internal Server Error: An unexpected error occurred on the server"
+    ServerNotAvailable:
+      description: Servicio no disponible -- El servidor no puede manejar la solicitud en este momento
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 503
+            message: "Service Unavailable: The server is currently unable to handle the request"
+
+# ─────────────────────────────────────────────
+# PATHS — Endpoints del Admin Controller
+# ─────────────────────────────────────────────
+paths:
+
+  /v1/admin/verificate/{userId}:
+    patch:
+      tags:
+        - Admin Controller
+      summary: Verificar a un usuario que quiere registrarse en el configurador de campoaras
+      description: Endpoint para que un usuario con rol SUPERADMIN o ADMIN pueda verificar a un usuario que se ha registrado en el configurador de campoaras
+      operationId: verificateUser
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        "200":
+          description: Usuario verificado
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+    delete:
+      tags:
+        - Admin Controller
+      summary: Invalidar a un usuario que quiere registrarse en el configurador de campoaras
+      description: Endpoint para que un usuario con rol SUPERADMIN o ADMIN pueda invalidar a un usuario que se ha registrado en el configurador de campoaras
+      operationId: invalidateUser
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        "200":
+          description: Usuario invalidado
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+  /v1/admin/get-users:
+    get:
+      tags:
+        - Admin Controller
+      summary: Obtener todos los usuarios registrados en el configurador para ver sus estados, y si están verificados o no
+      description: Endpoint para que un usuario con rol SUPERADMIN o ADMIN pueda obtener todos los usuarios registrados en el configurador de campoaras para ver sus estados, y si están verificados o no.
+      operationId: getAllUsers
+      responses:
+        "200":
+          description: Lista de usuarios obtenida exitosamente
+          content: 
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Usuario'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+
+  /v1/admin/upt-user/{userId}:
+    patch:
+      tags:
+        - Admin Controller
+      summary: Actualizar un usuario registrado en el configurador para modificar su descuento o comercial asignado
+      description: Endpoint para que un usuario con rol SUPERADMIN o ADMIN pueda actualizar un usuario registrado en el configurador de campoaras para modificar su descuento o comercial asignado.
+      operationId: updateUser
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Usuario'
+        
+      responses:
+        "200":
+          description: Usuario actualizado exitosamente
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+    
+  /v1/admin/del-user/{userId}:
+    delete:
+      tags:
+        - Admin Controller
+      summary: Eliminar un usuario registrado en el configurador
+      description: Endpoint para que un usuario con rol SUPERADMIN o ADMIN pueda eliminar un usuario registrado en el configurador de campoaras.
+      operationId: deleteUser
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      responses:
+        "200":
+          description: Usuario eliminado exitosamente
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+
+  /v1/admin/get-logs:
+    get:
+      tags:
+        - Admin Controller
+      summary: Obtener los logs del configurador para su respectivo análisis
+      description: Endpoint para que un usuario con rol SUPERADMIN pueda obtener los logs del configurador de campoaras para su respectivo análisis.
+      operationId: getLogs
+      responses:
+        "200":
+          description: Logs obtenidos exitosamente
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/LogFile'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
