@@ -13,6 +13,8 @@ public final class CPConstants
 	
 	// RUTAS
     public static final String ENV_PATH = "./src/main/resources/.env";
+    public static final String [] ROUTES_SWAGGER = {"/swagger-ui.html","/swagger-ui/**","/v3/api-docs/**","/v3/api-docs.yaml","/openapi/**"};
+    public static final String [] ROUTES_JWT = {"/v1/auth/login"};
     
     // VARIABLES DE .ENV
     public static final Dotenv dotenv = DotEnvInitializer.path.isEmpty() ?  
