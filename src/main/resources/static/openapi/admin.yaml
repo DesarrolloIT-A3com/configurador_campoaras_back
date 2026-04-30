@@ -6,7 +6,7 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost:8080/openapi/docs/
+  - url: http://192.168.1.169:8080/
     description: Documentación de endpoints de desarrollo
 
 #----------------------------------------------
@@ -173,6 +173,8 @@ paths:
       summary: Verificar a un usuario que quiere registrarse en el configurador de campoaras
       description: Endpoint para que un usuario con rol SUPERADMIN o ADMIN pueda verificar a un usuario que se ha registrado en el configurador de campoaras
       operationId: verificateUser
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/userId'
       responses:
@@ -194,6 +196,8 @@ paths:
       summary: Invalidar a un usuario que quiere registrarse en el configurador de campoaras
       description: Endpoint para que un usuario con rol SUPERADMIN o ADMIN pueda invalidar a un usuario que se ha registrado en el configurador de campoaras
       operationId: invalidateUser
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/userId'
       responses:
@@ -217,6 +221,8 @@ paths:
       summary: Obtener todos los usuarios registrados en el configurador para ver sus estados, y si están verificados o no
       description: Endpoint para que un usuario con rol SUPERADMIN o ADMIN pueda obtener todos los usuarios registrados en el configurador de campoaras para ver sus estados, y si están verificados o no.
       operationId: getAllUsers
+      security:
+        - cookieAuth: []
       responses:
         "200":
           description: Lista de usuarios obtenida exitosamente
@@ -242,6 +248,8 @@ paths:
       summary: Actualizar un usuario registrado en el configurador para modificar su descuento o comercial asignado
       description: Endpoint para que un usuario con rol SUPERADMIN o ADMIN pueda actualizar un usuario registrado en el configurador de campoaras para modificar su descuento o comercial asignado.
       operationId: updateUser
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/userId'
       requestBody:
@@ -272,6 +280,8 @@ paths:
       summary: Eliminar un usuario registrado en el configurador
       description: Endpoint para que un usuario con rol SUPERADMIN o ADMIN pueda eliminar un usuario registrado en el configurador de campoaras.
       operationId: deleteUser
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/userId'
       responses:
@@ -295,6 +305,8 @@ paths:
       summary: Obtener los logs del configurador para su respectivo análisis
       description: Endpoint para que un usuario con rol SUPERADMIN pueda obtener los logs del configurador de campoaras para su respectivo análisis.
       operationId: getLogs
+      security:
+        - cookieAuth: []
       responses:
         "200":
           description: Logs obtenidos exitosamente

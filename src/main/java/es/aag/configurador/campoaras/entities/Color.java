@@ -5,16 +5,20 @@ import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name="color")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Color 
@@ -26,27 +30,19 @@ public class Color
 	@Column(nullable = false,unique=true)
 	private String nombre;
 	
-	@OneToMany(mappedBy = "colorArmazon")
-	private Set<Configuracion> colorArmazonConfiguracion = new HashSet<Configuracion>();
+	@ManyToMany(mappedBy = "colores", fetch = FetchType.LAZY)
+	private Set<Acabado> acabados = new HashSet<>();
 	
-	@OneToMany(mappedBy = "colorFrente")
-	private Set<Configuracion> colorFrenteConfiguracion = new HashSet<Configuracion>();
 	
-	@OneToMany(mappedBy = "colorTirador")
-	private Set<Configuracion> colorTiradorConfiguracion = new HashSet<Configuracion>();
+	public void addAcabado(Acabado acabado)
+	{
+		this.acabados.add(acabado);
+		acabado.getColores().add(this);
+	}
 	
-	@OneToMany(mappedBy = "colorRegleta")
-	private Set<Configuracion> colorRegletaConfiguracion = new HashSet<Configuracion>();
-	
-	@OneToMany(mappedBy = "colorAcabado")
-	private Set<ProductoConfigurado> colorAcabadoProductoConfigurado = new HashSet<ProductoConfigurado>();
-	
-	@OneToMany(mappedBy = "colorFrente")
-	private Set<ProductoConfigurado> colorFrenteProductoConfigurado = new HashSet<ProductoConfigurado>();
-	
-	@OneToMany(mappedBy = "colorRegleta")
-	private Set<ProductoConfigurado> colorRegletaProductoConfigurado = new HashSet<ProductoConfigurado>();
-	
-	@OneToMany(mappedBy = "colorTirador")
-	private Set<ProductoConfigurado> colorTiradorProductoConfigurado = new HashSet<ProductoConfigurado>();
+	public void removeAcabado(Acabado acabado)
+	{
+		this.acabados.remove(acabado);
+		acabado.getColores().remove(this);
+	}
 }

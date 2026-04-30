@@ -5,7 +5,7 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost:8080/openapi/docs
+  - url: http://192.168.1.169:8080/
     description: Documentación de endpoints de desarrollo
 
 security:
@@ -109,20 +109,14 @@ components:
     ProductoConfigurado:
       type: object
       required:
-        - precioArmazon
-        - tipoAcabadoArmazon
-        - precioFrente
-        - tipoAcabadoFrente
-        - precioTirador
-        - tipoAcabadoTirador
-        - precioRegleta
-        - tipoAcabadoRegleta
-        - cantidad
-        - acabado
-        - colorAcabado
+        - referencia
+        - armazon
         - frente
         - acabadoFrente
-        - colorFrente
+        - acabadoTirador
+        - acabadoRegleta
+        - cantidad
+        - bulk
       properties:
         uuid:
           type: string
@@ -130,69 +124,57 @@ components:
           description: Identificador único del producto configurado
           example: "123e4567-e89b-12d3-a456-426614174000"
           nullable: true
-        precioArmazon:
-          type: number
-          format: float
-          description: Precio del armazón
-          example: 150.0
-        tipoAcabadoArmazon:
+        referencia:
           type: string
-          description: Tipo de acabado del armazón
-          example: "Mate"
-        precioFrente:
-          type: number
-          format: float
-          description: Precio del frente
-          example: 200.0
-        tipoAcabadoFrente:
+          description: Referencia única del producto configurado
+          example: "2001"
+        usuario:
           type: string
-          description: Tipo de acabado del frente
-          example: "Brillante"
-        precioTirador:
-          type: number
-          format: float
-          description: Precio del tirador
-          example: 50.0
-        tipoAcabadoTirador:
+          description: Uuid o nombre del Usuario que ha configurado el producto
+          example: "USER123"
+        armazon:
           type: string
-          description: Tipo de acabado del tirador
-          example: "Cromado"
-        precioRegleta:
-          type: number
-          format: float
-          description: Precio de la regleta
-          example: 30.0
-        tipoAcabadoRegleta:
+          description: Armazón del producto, solo se introduce el nombre del armazón
+          example: "Armazón Clásico"
+        frente:
           type: string
-          description: Tipo de acabado de la regleta
-          example: "Madera"
+          description: Frente del producto, solo se introduce el nombre del frente
+          example: "Frente Principal"
+        acabadoFrente:
+          type: string
+          description: Acabado del frente, solo se introduce el nombre del acabado
+          example: "Acabado Mate"
+        acabadoTirador:
+          type: string
+          description: Acabado del tirador, solo se introduce el nombre del acabado
+          example: "Acabado Natural"
+        acabadoRegleta:
+          type: string
+          description: Acabado de la regleta, solo se introduce el nombre del acabado
+          example: "Acabado Mate"
+        fondo:
+          type: number
+          description: Fondo del producto en cm
+          example: 37.8
+          nullable: true
+        ancho:
+          type: number
+          description: Ancho del producto en milímetros
+          example: 50
+          nullable: true
+        alto:
+          type: number
+          description: Alto del producto en milímetros
+          example: 30.5
+          nullable: true
         cantidad:
           type: integer
           description: Cantidad de productos configurados
           example: 10
-        acabado:
-          $ref: '#/components/schemas/Acabado'
-        colorAcabado:
-          $ref: '#/components/schemas/Color'
-        frente:
-          $ref: '#/components/schemas/Frente'
-        acabadoFrente:
-          $ref: '#/components/schemas/Acabado'
-        colorFrente:
-          $ref: '#/components/schemas/Color'
-        acabadoRegleta:
-          $ref: '#/components/schemas/Acabado'
-          nullable: true
-        colorRegleta:
-          $ref: '#/components/schemas/Color'
-          nullable: true
-        acabadoTirador:
-          $ref: '#/components/schemas/Acabado'
-          nullable: true
-        colorTirador:
-          $ref: '#/components/schemas/Color'
-          nullable: true
-
+        bulk:
+          type: boolean
+          description: Indica si el producto configurado es un producto a medida (bulk) o un producto estándar
+          example: false
     Usuario:
       type: object
       required:
@@ -275,7 +257,7 @@ components:
           items:
             $ref: '#/components/schemas/ProductoConfigurado'
         usuario:
-          $ref: '#/components/schemas/Usuario'
+          $ref: '#/components/schemas/Usuario'  
 
   parameters:
     userId:
@@ -414,7 +396,7 @@ paths:
         "503":
           $ref: '#/components/responses/ServerNotAvailable'
   
-  /v1/config-product:
+  /v1/configure:
     get:
       tags:
         - Product
@@ -439,7 +421,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
         "503":
           $ref: '#/components/responses/ServerNotAvailable'
-  
+
     post:
       tags: 
         - Product

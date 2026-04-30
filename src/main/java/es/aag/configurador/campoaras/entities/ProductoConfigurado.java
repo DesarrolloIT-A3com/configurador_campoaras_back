@@ -1,5 +1,7 @@
 package es.aag.configurador.campoaras.entities;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -8,12 +10,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "producto_configurado")
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProductoConfigurado 
@@ -22,68 +26,63 @@ public class ProductoConfigurado
 	@Column(nullable = false, unique = true)
 	private String uuid;
 	
-	@Column(nullable = false)
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "referencia",nullable = false)
+	private Configuracion configuracion;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "usuario_id",nullable = false)
+	private Usuario usuario;
+	
+	@Column
 	private float precioArmazon;
 	
-	@Column(nullable = false)
-	private String tipoAcabadoArmazon;
-	
-	@Column(nullable = false)
-	private float precioFrente;
-	
-	@Column(nullable = false)
-	private String tipoAcabadoFrente;
-
-	@Column(nullable = false)
-	private float precioTirador;
-	
-	@Column(nullable = false)
-	private String tipoAcabadoTirador;
-	
-	@Column(nullable = false)
-	private float precioRegleta;
-	
-	@Column(nullable = false)
-	private String tipoAcabadoRegleta;
-	
-	@Column(nullable = false)
-	private int cantidad;
-	
-	@ManyToOne(fetch = FetchType.EAGER)
+	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "acabado_id")
     private Acabado acabado;
 	
-	@ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "color_acabado_id")
-    private Color colorAcabado;
+	@Column
+	private float precioFrente;
 	
-	@ManyToOne(fetch = FetchType.EAGER)
+	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "frente_id")
     private Frente frente;
 	
-	@ManyToOne(fetch = FetchType.EAGER)
+	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "acabado_frente_id")
     private Acabado acabadoFrente;
+
+	@Column
+	private float precioTirador;
 	
-	@ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "color_frente_id")
-    private Color colorFrente;
-	
-	@ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "acabado_regleta_id")
-    private Acabado acabadoRegleta;
-	
-	@ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "color_regleta_id")
-    private Color colorRegleta;
-	
-	@ManyToOne(fetch = FetchType.EAGER)
+	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "acabado_tirador_id")
     private Acabado acabadoTirador;
 	
-	@ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "color_tirador_id")
-    private Color colorTirador;
+	@Column
+	private float precioRegleta;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "acabado_regleta_id")
+    private Acabado acabadoRegleta;
 	
 	
+	// Estas columnas son únicas para las medidas especiales u otras medidas las cuales oscilan un rango entre las medidas de una referencia
+	@Column
+	private Float fondo;
+	
+	@Column
+	private Float ancho;
+	
+	@Column
+	private Float alto;
+	
+	@Column
+	private float precioFinal;
+	
+	@Column
+	private int cantidad;
+	
+	@Column(nullable = false)
+	private LocalDateTime fecha;
 }

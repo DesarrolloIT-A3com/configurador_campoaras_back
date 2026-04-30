@@ -12,12 +12,14 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name="serie")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Serie 
@@ -32,7 +34,7 @@ public class Serie
 	@Column(nullable = false)
 	private String modulo;
 	
-	@Column(nullable = false)
+	@Column
 	private String extra;
 	
 	@ManyToOne(fetch = FetchType.EAGER)
@@ -41,4 +43,14 @@ public class Serie
 	
 	@OneToMany(mappedBy = "serie")
 	private Set<Configuracion> configuracion = new HashSet<Configuracion>();
+	
+	public void addConfiguracion(Configuracion configuracion)
+	{
+		this.configuracion.add(configuracion);
+	}
+	
+	public void removeConfiguracion(Configuracion configuracion)
+	{
+		this.configuracion.remove(configuracion);
+	}
 }

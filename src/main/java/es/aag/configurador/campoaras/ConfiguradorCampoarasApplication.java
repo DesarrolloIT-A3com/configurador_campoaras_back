@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import es.aag.configurador.campoaras.entities.Rol;
 import es.aag.configurador.campoaras.entities.Usuario;
+import es.aag.configurador.campoaras.repositories.IProductoRepository;
 import es.aag.configurador.campoaras.repositories.IRolRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.services.EncryptorService;
@@ -76,7 +77,8 @@ public class ConfiguradorCampoarasApplication implements CommandLineRunner{
 			superUser.setUuid(uuid.toString());
 			superUser.setEmail(encryptor.encrypt(CPConstants.ADMIN_MAIL));
 			superUser.setUsername(encryptor.encrypt(CPConstants.ADMIN_NAME[0]));
-			superUser.setPassword(passwordEncoder.encode(CPConstants.ADMIN_PASS[0]));
+//			superUser.setPassword(passwordEncoder.encode(CPConstants.ADMIN_PASS[0]));
+			superUser.setPassword(passwordEncoder.encode("Prueba12345_"));
 			superUser.setDescuento(0);
 			superUser.setComercial(null);
 			superUser.setUSRToken("USR-"+UUID.randomUUID().toString().substring(0,8));
@@ -85,7 +87,36 @@ public class ConfiguradorCampoarasApplication implements CommandLineRunner{
 			this.userCreator.save(superUser);
 			
 			log.info("[ADMIN] Creacion de super usuario");
+			
+			Usuario testUser = new Usuario();
+			uuid = UUID.randomUUID();
+			
+			testUser.setUuid(uuid.toString());
+			testUser.setEmail(this.encryptor.encrypt("pruiz@a3com.es"));
+			testUser.setPassword(passwordEncoder.encode("Prueba12345_"));
+			testUser.setUsername(this.encryptor.encrypt("Pablo Ruiz"));
+			testUser.setDescuento(0);
+			testUser.setComercial(null);
+			testUser.setUSRToken("USR-"+UUID.randomUUID().toString().substring(0,8));
+			testUser.setRol(this.rolCreator.findByNombre(CPConstants.ADMIN_ROLE));
+			
+			this.userCreator.save(testUser);
+			
+			Usuario testUser2 = new Usuario();
+			uuid = UUID.randomUUID();
+			
+			testUser2.setUuid(uuid.toString());
+			testUser2.setEmail(this.encryptor.encrypt("prueba@a3com.es"));
+			testUser2.setPassword(passwordEncoder.encode("Prueba12345_"));
+			testUser2.setUsername(this.encryptor.encrypt("Usuario Prueba"));
+			testUser2.setDescuento(0);
+			testUser2.setComercial(null);
+			testUser2.setUSRToken("USR-"+UUID.randomUUID().toString().substring(0,8));
+			testUser2.setRol(this.rolCreator.findByNombre(CPConstants.VER_ROLE));
+			
+			this.userCreator.save(testUser2);
 		}
+		
 		
 		log.info("[ADMIN] Destruccion de valores sensibles");
 		

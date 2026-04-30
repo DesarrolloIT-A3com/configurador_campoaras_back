@@ -1,7 +1,9 @@
 package es.aag.configurador.campoaras.entities;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -12,14 +14,17 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name="configuracion")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Configuracion {
@@ -36,45 +41,39 @@ public class Configuracion {
 
     @Column(nullable = false)
     private float alto;
-
+    
+    @Column(nullable = false)
+    private float altoMax;
+    
+    @Column(nullable = false)
+    private float fondoMin;
+    
+    @Column(nullable = false)
+    private float fondoMax;
+    
+    @Column(nullable = false)
+    private float precioMedidaFondoEsp;
+    
+    @Column(nullable = false)
+    private float precioMedidaAnchoEsp;
+    
+    @Column(nullable = false)
+    private float precioMedidaAltoEsp;
+    
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "json")
-    private List<Map<String, Float>> armazon;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "color_acabado_id")
-    private Color colorArmazon;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "frente_id")
-    private Frente frente;
+    private List<Map<String,Object>> armazon;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false, columnDefinition = "json")
-    private List<Map<String, Float>> armazon_frente;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "color_acabado_frente_id")
-    private Color colorFrente;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "json")
-    private List<Map<String, Float>> tirador;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "json")
-    private List<Map<String, Float>> regleta;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "color_acabado_tirador_id")
-    private Color colorTirador;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "color_acabado_regleta_id")
-    private Color colorRegleta;
-
-    @ManyToOne(fetch = FetchType.EAGER)
+    @Column(nullable = true, columnDefinition = "json")
+    private List<Map<String,Object>> extras;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "serie_id")
     private Serie serie;
+    
+    @OneToMany(mappedBy = "configuracion")
+	private Set<ProductoConfigurado> series = new HashSet<ProductoConfigurado>();
+    
 }
 

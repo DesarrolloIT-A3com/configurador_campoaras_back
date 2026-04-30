@@ -14,6 +14,7 @@ import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import es.aag.configurador.campoaras.utils.CPConstants;
 
@@ -21,15 +22,19 @@ import es.aag.configurador.campoaras.utils.CPConstants;
 public class SecurityConfig 
 {
 	private final JwtAuthenticationFilter jwtAuthFilter;
+	private final UrlBasedCorsConfigurationSource corsConfigurationSource;
 	
-	public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter)
+	public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,UrlBasedCorsConfigurationSource corsConfigurationSource)
 	{
 		this.jwtAuthFilter = jwtAuthFilter;
+		this.corsConfigurationSource = corsConfigurationSource;
 	}
 	
 	@Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception 
 	{
+		http.cors(cors -> cors.configurationSource(this.corsConfigurationSource));
+		
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS,"/**").permitAll()

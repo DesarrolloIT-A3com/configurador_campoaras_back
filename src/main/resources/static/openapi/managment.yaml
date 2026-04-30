@@ -6,7 +6,7 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost:8080/openapi/docs/
+  - url: http://192.168.1.169:8080/
     description: Documentación de endpoints de desarrollo
  
 #----------------------------------------------
@@ -106,6 +106,11 @@ components:
       required:
         - nombre
         - referencia
+        - regleta
+        - tirador
+        - acabados
+        - acabadosExtension
+        - productos
       properties:
         uuid:
           type: string
@@ -120,7 +125,33 @@ components:
           type: string
           description: Referencia única del frente
           example: "IN"
-    
+        regleta:
+          type: boolean
+          description: Indica si el frente incluye regleta
+          example: true
+        tirador:
+          type: boolean
+          description: Indica si el frente incluye tirador
+          example: false
+        acabados:
+          type: array
+          items:
+            type: string
+          description: Lista de acabados asociados al frente
+          example: ["Mate", "Brillante"]
+        acabadosExtension:
+          type: array
+          items:
+            type: string
+          description: Lista de acabados asociados a la regleta o tirador del frente
+          example: ["Madera", "Cromado"]
+        productos:
+          type: array
+          items:
+            type: string
+          description: Productos al que pertenece el frente siendo el uuid del producto
+          example: ["123e4567-e89b-12d3-a456-426614174000"]
+
     Acabado:
       type: object
       required:
@@ -141,6 +172,12 @@ components:
             type: string
           description: Lista de tipos asociados al acabado
           example: ["Natural", "Seda"]
+        colores:
+          type: array
+          items:
+            type: string
+          description: Lista de colores asociados al acabado
+          example: ["Rojo", "Azul", "Verde"]
     
     Color:
       type: object
@@ -156,6 +193,12 @@ components:
           type: string
           description: Nombre del color
           example: "Rojo"
+        acabados:
+          type: array
+          items:
+            type: string
+          description: Lista de acabados asociados al color
+          example: ["Mate", "Brillante"]
 
     Configuracion:
       type: object
@@ -164,11 +207,15 @@ components:
         - fondo
         - ancho
         - alto
+        - altoMax
+        - fondoMin
+        - fondoMax
+        - precioMedidaFondoEsp
+        - precioMedidaAnchoEsp
+        - precioMedidaAltoEsp
         - armazon
-        - colorArmazon
         - frente
         - armazon_frente
-        - colorFrente
         - serie
       properties:
         referencia:
@@ -190,76 +237,86 @@ components:
           format: float
           description: Alto de la configuración
           example: 200.0
+        altoMax:
+          type: number
+          format: float
+          description: Alto máximo permitido para la configuración
+          example: 250.0
+        fondoMin:
+          type: number
+          format: float
+          description: Fondo mínimo permitido para la configuración
+          example: 30.0
+        fondoMax:
+          type: number
+          format: float
+          description: Fondo máximo permitido para la configuración
+          example: 70.0
+        precioMedidaFondoEsp:
+          type: number
+          format: float
+          description: Precio adicional por medidas de fondo especiales
+          example: 40.0
+        precioMedidaAnchoEsp:
+          type: number
+          format: float
+          description: Precio adicional por medidas de ancho especiales
+          example: 60.0
+        precioMedidaAltoEsp:
+          type: number
+          format: float
+          description: Precio adicional por medidas de alto especiales
+          example: 80.0
         armazon:
           type: array
           items:
             type: object
-            additionalProperties:
-              type: number
-              format: float
-          description: Datos del armazón en formato JSON
-          example: [{"x": 10.0, "y": 20.0}]
-        colorArmazon:
-          $ref: '#/components/schemas/Color'
-        frente:
-          $ref: '#/components/schemas/Frente'
-        armazon_frente:
+            description: Lista de armazones asociados a la configuración
+            properties:
+              nombre:
+                type: string
+                description: Nombre del acabado del armazón
+                example: "Melamina"
+              precio:
+                type: number
+                format: float
+                description: Precio del armazón
+                example: 150.0
+        extras:
           type: array
           items:
             type: object
-            additionalProperties:
-              type: number
-              format: float
-          description: Datos del armazón del frente en formato JSON
-          example: [{"x": 15.0, "y": 25.0}]
-        colorFrente:
-          $ref: '#/components/schemas/Color'
-        tirador:
-          type: array
-          items:
-            type: object
-            additionalProperties:
-              type: number
-              format: float
-          description: Datos del tirador en formato JSON
-          example: [{"x": 5.0, "y": 10.0}]
-          nullable: true
-        regleta:
-          type: array
-          items:
-            type: object
-            additionalProperties:
-              type: number
-              format: float
-          description: Datos de la regleta en formato JSON
-          example: [{"x": 3.0, "y": 8.0}]
-          nullable: true
-        colorTirador:
-          $ref: '#/components/schemas/Color'
-          nullable: true
-        colorRegleta:
-          $ref: '#/components/schemas/Color'
-          nullable: true
+            description: Posibles extras asociados a la configuración
+            properties:
+              nombre:
+                type: string
+                description: Nombre del extra
+                example: "Cambio de simetría"
+              precio:
+                type: number
+                format: float
+                description: Precio extra 
+                example: 50.0
         serie:
-          $ref: '#/components/schemas/Serie'
+          type: string
+          description: Serie asociada a la configuración siendo el uuid de la serie
+          example: "123e4567-e89b-12d3-a456-426614174000"
 
     ProductoConfigurado:
       type: object
       required:
+        - referencia
+        - usuario
         - precioArmazon
         - tipoAcabadoArmazon
         - precioFrente
+        - frente
         - tipoAcabadoFrente
         - precioTirador
         - tipoAcabadoTirador
         - precioRegleta
         - tipoAcabadoRegleta
         - cantidad
-        - acabado
-        - colorAcabado
-        - frente
-        - acabadoFrente
-        - colorFrente
       properties:
         uuid:
           type: string
@@ -267,6 +324,14 @@ components:
           description: Identificador único del producto configurado
           example: "123e4567-e89b-12d3-a456-426614174000"
           nullable: true
+        referencia:
+          type: string
+          description: Referencia única del producto configurado
+          example: "2001"
+        usuario:
+          type: string
+          description: Uuid o nombre del Usuario que ha configurado el producto
+          example: "USER123"
         precioArmazon:
           type: number
           format: float
@@ -307,28 +372,6 @@ components:
           type: integer
           description: Cantidad de productos configurados
           example: 10
-        acabado:
-          $ref: '#/components/schemas/Acabado'
-        colorAcabado:
-          $ref: '#/components/schemas/Color'
-        frente:
-          $ref: '#/components/schemas/Frente'
-        acabadoFrente:
-          $ref: '#/components/schemas/Acabado'
-        colorFrente:
-          $ref: '#/components/schemas/Color'
-        acabadoRegleta:
-          $ref: '#/components/schemas/Acabado'
-          nullable: true
-        colorRegleta:
-          $ref: '#/components/schemas/Color'
-          nullable: true
-        acabadoTirador:
-          $ref: '#/components/schemas/Acabado'
-          nullable: true
-        colorTirador:
-          $ref: '#/components/schemas/Color'
-          nullable: true
   
   responses:
     Unauthorized:
@@ -443,21 +486,68 @@ components:
         type: string
       description: UUID del producto configurado
       example: "123e4567-e89b-12d3-a456-426614174000"
+    uuidFilter:
+      name: uuid
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Filtro opcional para buscar por UUID
+      example: "123e4567-e89b-12d3-a456-426614174000"
 
 paths:
 
   /v1/managment/products:
-    post:
-      summary: Añadir un nuevo producto
-      description: Endpoint para añadir un nuevo producto al sistema.
+    get:
+      summary: Listar productos
+      description: Endpoint para obtener la lista de productos del sistema.
       tags:
         - Productos
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Lista de productos obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Producto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Añadir un nuevo producto
+      tags:
+        - Productos
+      security:
+        - cookieAuth: []
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Producto'
+              type: object
+              required:
+                - producto
+                - img
+              properties:
+                producto:
+                  $ref: '#/components/schemas/Producto'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del producto en formato PNG o JPEG
+            encoding:
+              producto:
+                contentType: application/json 
+              img:
+                contentType: image/png, image/jpeg
       responses:
         '201':
           description: Producto creado exitosamente
@@ -476,14 +566,31 @@ paths:
       description: Endpoint para editar un producto del sistema, este luego se debe de actualizar en todas las referencias
       tags:
         - Productos
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/productId'
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Producto'
+              type: object
+              required:
+                - producto
+                - img
+              properties:
+                producto:
+                  $ref: '#/components/schemas/Producto'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del producto en formato PNG o JPEG
+            encoding:
+              producto:
+                contentType: application/json 
+              img:
+                contentType: image/png, image/jpeg
       responses:
         '201':
           description: Producto editado exitosamente
@@ -501,6 +608,8 @@ paths:
       description: Endpoint para eliminar un producto del sistema, se eliminará de todas las referencias
       tags:
         - Productos
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/productId'
       responses:
@@ -516,17 +625,62 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   /v1/managment/series:
-    post:
-      summary: Añadir una nueva serie
-      description: Endpoint para añadir una nueva serie al sistema.
+    get:
+      summary: Listar series
+      description: Endpoint para obtener la lista de series del sistema.
       tags:
         - Series
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/uuidFilter'
+      responses:
+        '200':
+          description: Lista de series obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Serie'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/managment/series/{productId}:
+    post:
+      summary: Añadir una nueva serie
+      description: Endpoint para añadir una nueva serie al sistema, se le debe de pasar el uuid de un producto para que se asocie.
+      tags:
+        - Series
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/productId'
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Serie'
+              type: object
+              required:
+                - serie
+                - img
+              properties:
+                serie:
+                  $ref: '#/components/schemas/Serie'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen de la serie en formato PNG o JPEG
+            encoding:
+              serie:
+                contentType: application/json 
+              img:
+                contentType: image/png, image/jpeg
       responses:
         '201':
           description: Serie creada exitosamente
@@ -539,20 +693,40 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/managment/series/{serieId}:
+  /v1/managment/series/{serieId}/product/{productId}:
     patch:
       summary: Editar una serie
       description: Endpoint para editar una serie del sistema, esta luego se debe de actualizar en todas las referencias
       tags:
         - Series
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/serieId'
+        - $ref: '#/components/parameters/productId'
+
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Serie'
+              type: object
+              required:
+                - serie
+                - img
+              properties:
+                serie:
+                  $ref: '#/components/schemas/Serie'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen de la serie en formato PNG o JPEG
+            encoding:
+              serie:
+                contentType: application/json 
+              img:
+                contentType: image/png, image/jpeg
+      
       responses:
         '201':
           description: Serie editada exitosamente
@@ -564,12 +738,15 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
-
+  
+  /v1/managment/series/{serieId}:
     delete:
       summary: Eliminar una serie
       description: Endpoint para eliminar una serie del sistema, se eliminará de todas las referencias
       tags:
         - Series
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/serieId'
       responses:
@@ -585,17 +762,60 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   /v1/managment/frentes:
+    get:
+      summary: Listar frentes
+      description: Endpoint para obtener la lista de frentes del sistema.
+      tags:
+        - Frentes
+      parameters:
+        - $ref: '#/components/parameters/uuidFilter'
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Lista de frentes obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Frente'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
     post:
       summary: Añadir un nuevo frente
       description: Endpoint para añadir un nuevo frente al sistema.
       tags:
         - Frentes
+      security:
+        - cookieAuth: []
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Frente'
+              type: object
+              required:
+                - frente
+                - img
+              properties:
+                frente:
+                  $ref: '#/components/schemas/Frente'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del frente en formato PNG o JPEG
+            encoding:
+              frente:
+                contentType: application/json 
+              img:
+                contentType: image/png, image/jpeg
+          
       responses:
         '201':
           description: Frente creado exitosamente
@@ -614,14 +834,31 @@ paths:
       description: Endpoint para editar un frente del sistema, este luego se debe de actualizar en todas las referencias
       tags:
         - Frentes
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/frenteId'
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Frente'
+              type: object
+              required:
+                - frente
+                - img
+              properties:
+                frente:
+                  $ref: '#/components/schemas/Frente'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del frente en formato PNG o JPEG
+            encoding:
+              frente:
+                contentType: application/json 
+              img:
+                contentType: image/png, image/jpeg
       responses:
         '201':
           description: Frente editado exitosamente
@@ -639,6 +876,8 @@ paths:
       description: Endpoint para eliminar un frente del sistema, se eliminará de todas las referencias
       tags:
         - Frentes
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/frenteId'
       responses:
@@ -654,17 +893,59 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   /v1/managment/acabados:
+    get:
+      summary: Listar acabados
+      description: Endpoint para obtener la lista de acabados del sistema.
+      tags:
+        - Acabados
+      parameters:
+        - $ref: '#/components/parameters/uuidFilter'
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Lista de acabados obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Acabado'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
     post:
       summary: Añadir un nuevo acabado
       description: Endpoint para añadir un nuevo acabado al sistema.
       tags:
         - Acabados
+      security:
+        - cookieAuth: []
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Acabado'
+              type: object
+              required:
+                - acabado
+                - img
+              properties:
+                acabado:
+                  $ref: '#/components/schemas/Acabado'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del acabado en formato PNG o JPEG
+            encoding:
+              acabado:
+                contentType: application/json 
+              img:
+                contentType: image/png, image/jpeg
       responses:
         '201':
           description: Acabado creado exitosamente
@@ -683,14 +964,31 @@ paths:
       description: Endpoint para editar un acabado del sistema, este luego se debe de actualizar en todas las referencias
       tags:
         - Acabados
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/acabadoId'
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Acabado'
+              type: object
+              required:
+                - acabado
+                - img
+              properties:
+                acabado:
+                  $ref: '#/components/schemas/Acabado'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del acabado en formato PNG o JPEG
+            encoding:
+              acabado:
+                contentType: application/json 
+              img:
+                contentType: image/png, image/jpeg
       responses:
         '201':
           description: Acabado editado exitosamente
@@ -708,6 +1006,8 @@ paths:
       description: Endpoint para eliminar un acabado del sistema, se eliminará de todas las referencias
       tags:
         - Acabados
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/acabadoId'
       responses:
@@ -723,17 +1023,59 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   /v1/managment/colores:
+    get:
+      summary: Listar colores
+      description: Endpoint para obtener la lista de colores del sistema.
+      tags:
+        - Colores
+      parameters:
+        - $ref: '#/components/parameters/uuidFilter'
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Lista de colores obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Color'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
     post:
       summary: Añadir un nuevo color
       description: Endpoint para añadir un nuevo color al sistema.
       tags:
         - Colores
+      security:
+        - cookieAuth: []
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Color'
+              type: object
+              required:
+                - color
+                - img
+              properties:
+                color:
+                  $ref: '#/components/schemas/Color'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del color en formato PNG o JPEG
+            encoding:
+              color:
+                contentType: application/json 
+              img:
+                contentType: image/png, image/jpeg
       responses:
         '201':
           description: Color creado exitosamente
@@ -752,14 +1094,26 @@ paths:
       description: Endpoint para editar un color del sistema, este luego se debe de actualizar en todas las referencias
       tags:
         - Colores
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/colorId'
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Color'
+              type: object
+              required:
+                - producto
+                - img
+              properties:
+                producto:
+                  $ref: '#/components/schemas/Color'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del producto en formato PNG o JPEG
       responses:
         '201':
           description: Color editado exitosamente
@@ -777,6 +1131,8 @@ paths:
       description: Endpoint para eliminar un color del sistema, se eliminará de todas las referencias
       tags:
         - Colores
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/colorId'
       responses:
@@ -792,17 +1148,47 @@ paths:
           $ref: '#/components/responses/InternalServerError'
     
   /v1/managment/configuracion:
+    get:
+      summary: Listar configuraciones
+      description: Endpoint para obtener la lista de configuraciones del sistema.
+      tags:
+        - Configuración
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/uuidFilter'
+      responses:
+        '200':
+          description: Lista de configuraciones obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Configuracion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
     post:
       summary: Añadir una nueva configuración
       description: Endpoint para añadir una nueva configuración al sistema.
       tags:
         - Configuración
+      security:
+        - cookieAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Configuracion'
+              type: object
+              properties:
+                configuracion:
+                  $ref: '#/components/schemas/Configuracion'
       responses:
         '201':
           description: Configuración creada exitosamente
@@ -821,14 +1207,26 @@ paths:
       description: Endpoint para editar una configuración del sistema, esta luego se debe de actualizar en todas las referencias
       tags:
         - Configuración
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/configuracionId'
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Configuracion'
+              type: object
+              required:
+                - producto
+                - img
+              properties:
+                producto:
+                  $ref: '#/components/schemas/Configuracion'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del producto en formato PNG o JPEG
       responses:
         '201':
           description: Configuración editada exitosamente
@@ -846,6 +1244,8 @@ paths:
       description: Endpoint para eliminar una configuración del sistema, se eliminará de todas las referencias
       tags:
         - Configuración
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/configuracionId'
       responses:
@@ -861,17 +1261,52 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   /v1/managment/producto-configurado:
+    get:
+      summary: Listar productos configurados
+      description: Endpoint para obtener la lista de productos configurados del sistema.
+      tags:
+        - Producto Configurado
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Lista de productos configurados obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductoConfigurado'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
     post:
       summary: Añadir un nuevo producto configurado
       description: Endpoint para añadir un nuevo producto configurado al sistema.
       tags:
         - Producto Configurado
+      security:
+        - cookieAuth: []
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProductoConfigurado'
+              type: object
+              required:
+                - producto
+                - img
+              properties:
+                producto:
+                  $ref: '#/components/schemas/ProductoConfigurado'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del producto en formato PNG o JPEG
       responses:
         '201':
           description: Producto configurado creado exitosamente
@@ -890,14 +1325,26 @@ paths:
       description: Endpoint para editar un producto configurado del sistema, este luego se debe de actualizar en todas las referencias
       tags:
         - Producto Configurado
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/productoConfiguradoId'
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ProductoConfigurado'
+              type: object
+              required:
+                - producto
+                - img
+              properties:
+                producto:
+                  $ref: '#/components/schemas/ProductoConfigurado'
+                img:
+                  type: string
+                  format: binary
+                  description: Imagen del producto en formato PNG o JPEG
       responses:
         '201':
           description: Producto configurado editado exitosamente
@@ -915,6 +1362,8 @@ paths:
       description: Endpoint para eliminar un producto configurado del sistema, se eliminará de todas las referencias
       tags:
         - Producto Configurado
+      security:
+        - cookieAuth: []
       parameters:
         - $ref: '#/components/parameters/productoConfiguradoId'
       responses:
@@ -928,3 +1377,22 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  
+  /v1/managment/load:
+    post:
+      summary: Cargar datos de prueba
+      description: Endpoint para cargar datos de prueba en el sistema.
+      tags:
+        - Carga de Datos
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Datos de prueba cargados exitosamente
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+

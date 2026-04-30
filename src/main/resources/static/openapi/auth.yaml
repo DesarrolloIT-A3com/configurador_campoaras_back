@@ -7,7 +7,7 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost:8080/openapi/docs/
+  - url: http://192.168.1.169:8080/
     description: Documentación de endpoints de desarrollo
 
 security:
@@ -247,7 +247,7 @@ paths:
             schema:
               $ref: '#/components/schemas/UsuarioRegister'
       responses:
-        "200":
+        "201":
           description: Codigo de verificacion enviado
         "400":
           $ref: '#/components/responses/BadRequest'
@@ -267,7 +267,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/verificationCode'
       responses:
-        "200":
+        "201":
           description: Usuario verificado exitosamente
         "400":
           $ref: '#/components/responses/BadRequest'
@@ -329,6 +329,24 @@ paths:
       responses:
         "200":
           description: Cierre de sesión exitoso, cookie JWT eliminada
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+  
+  /v1/auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Refresco de la cookie JWT para extender la sesión del usuario autenticado
+      operationId: refreshToken
+      responses:
+        "200":
+          description: Cookie JWT refrescada exitosamente
+        "401":
+          $ref: '#/components/responses/Unauthorized'
         "403":
           $ref: '#/components/responses/Forbidden'
         "500":
@@ -462,24 +480,3 @@ paths:
         "503":
           $ref: '#/components/responses/ServerNotAvailable'
   
-  /v1/auth/delete-account/{username}:
-    delete:
-      tags:
-        - Auth
-      summary: Eliminación de la cuenta del usuario autenticado, se avisará al usuario y si está de acuerdo debe de introducir su username como confirmación
-      operationId: deleteAccount
-      security:
-        - cookieAuth: []
-      parameters:
-        - $ref: '#/components/parameters/username'
-      responses:
-        "200":
-          description: Cuenta eliminada exitosamente
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "500":
-          $ref: '#/components/responses/InternalServerError'
-        "503":
-          $ref: '#/components/responses/ServerNotAvailable'

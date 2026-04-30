@@ -1,0 +1,858 @@
+package es.aag.configurador.campoaras.services;
+
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import es.aag.configurador.campoaras.dto.ResponseConfiguracion;
+import es.aag.configurador.campoaras.dto.ResponseSeleccion;
+import es.aag.configurador.campoaras.dto.SeleccionDTO;
+import es.aag.configurador.campoaras.entities.Acabado;
+import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
+import es.aag.configurador.campoaras.entities.Configuracion;
+import es.aag.configurador.campoaras.entities.Frente;
+import es.aag.configurador.campoaras.entities.ProductoConfigurado;
+import es.aag.configurador.campoaras.entities.Serie;
+import es.aag.configurador.campoaras.entities.Usuario;
+import es.aag.configurador.campoaras.repositories.IAcabadoRepository;
+import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
+import es.aag.configurador.campoaras.repositories.IConfiguracionRepository;
+import es.aag.configurador.campoaras.repositories.IFrenteRepository;
+import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
+import es.aag.configurador.campoaras.repositories.ISerieRepository;
+import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
+import es.aag.configurador.campoaras.utils.CPConstants;
+import es.aag.configurador.campoaras.utils.CPException;
+import es.aag.configurador.campoaras.utils.Validations;
+
+/**
+ * Servicio encargado de la gestión de configuraciones de la app
+ * @author Pablo Ruiz (desarrolloit@a3com.es)
+ */
+@Service
+public class ConfigurationService 
+{
+private Logger log = LogManager.getLogger();
+	
+	@Autowired
+	private EncryptorService encryptor;
+	
+	@Autowired
+	private IUsuarioRepository userRepo;
+	
+	@Autowired
+	private ISerieRepository seriesRepo;
+	
+	@Autowired
+	private IAcabadoRepository acabadoRepo;
+	
+	@Autowired
+	private IFrenteRepository frenteRepo;
+	
+	@Autowired
+	private IConfiguracionRepository configuracionRepo;
+	
+	@Autowired
+	private IProductoConfiguradoRepository seleccionRepo;
+	
+	@Autowired
+	private IBulkProductosUsuarioRepository bulkRepo;
+	
+	private final Validations validation;
+	
+	public ConfigurationService()
+	{
+		this.validation = new Validations();
+	}
+	
+	/**
+	 * Metodo que devuelve, registra, actualiza y borra una configuración dependiendo del endpoint a consultar, en caso de ser GET devuelve una lista de producto , si es otro método devuelve null
+	 * @param body
+	 * @param referencia
+	 * @param method
+	 * @param rol
+	 * @param seguridad
+	 * @param usrToken
+	 * @return
+	 * @throws CPException
+	 */
+	public List<ResponseConfiguracion> manageConfiguracion (ResponseConfiguracion body,String referencia, String uuid,String method,String rol,String seguridad,String usrToken) throws CPException
+	{
+		this.validation.initialize(null, null, acabadoRepo, null, seriesRepo, configuracionRepo, encryptor);
+		
+		List<ResponseConfiguracion> response = null;
+		
+		if(!rol.equals(CPConstants.SUPADMIN_ROLE) &&  !rol.equals(CPConstants.ADMIN_ROLE))
+		{
+			log.warn("[AVISO] -- /configuracion -- {} Ha intentado acceder a la gestión de configuraciones con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(403,"No tienes permiso");
+		}
+		
+		switch(method)
+		{
+			case CPConstants.POST:
+			{
+				if(!this.validation.validateConfiguration(body))
+				{
+					log.warn("[AVISO] -- /configuracion -- {} Ha introducido datos erroneos para subir una configuracion con permiso de {} -- {}",usrToken,rol,seguridad);
+					throw new CPException(400,"Datos invalidos");
+				}
+				
+				Optional<Configuracion> configOpt = this.configuracionRepo.findById(body.getReferencia());
+				
+				if(configOpt.isPresent())
+				{
+					log.warn("[AVISO] -- /configuracion -- {} Ha intentado añadir una configuracion {} que ya existe con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+					throw new CPException(409,"No tienes permiso");
+				}
+				
+				List<Map<String,Object>> armazonSaneado = this.validation.sanearArmazon(body.getArmazon());
+				List<Map<String,Object>> extrasSaneado  = this.validation.sanearExtras(body.getExtras());
+				
+				if(armazonSaneado.size()==0)
+				{
+					log.warn("[AVISO] -- /configuracion -- {} Ha introducido un armazon erroneo en la configuracion con permiso de {} -- {}",usrToken,rol,seguridad);
+					throw new CPException(400,"Datos invalidos");
+				}
+				
+				// Ternario para mantener el valor de extrasSaneado en caso de que su tamaño sea > 0
+				extrasSaneado = extrasSaneado.size()>0 ? extrasSaneado : null; 
+				
+				Configuracion config = new Configuracion();
+				
+				config.setReferencia(body.getReferencia());
+				config.setFondo(body.getFondo());
+				config.setAncho(body.getAncho());
+				config.setAlto(body.getAlto());
+				config.setAltoMax(body.getAltoMax());
+				config.setFondoMin(body.getFondoMin());
+				config.setFondoMax(body.getFondoMax());
+				config.setPrecioMedidaFondoEsp(body.getPrecioMedidaFondoEsp());
+				config.setPrecioMedidaAnchoEsp(body.getPrecioMedidaAnchoEsp());
+				config.setPrecioMedidaAltoEsp(body.getPrecioMedidaAltoEsp());
+				config.setArmazon(armazonSaneado);
+				config.setExtras(extrasSaneado);
+				
+				Serie serie = this.validation.findSerie(body.getSerie());
+				
+				if(serie==null)
+				{
+					Optional<Serie> serieOpt = this.seriesRepo.findById(body.getSerie());
+					
+					if(!serieOpt.isPresent())
+					{
+						log.warn("[AVISO] -- /configuracion -- {} Ha introducido una serie erronea en una configuración con permiso de {} -- {}",usrToken,rol,seguridad);
+						throw new CPException(400,"Datos invalidos");
+					}
+					
+					serie = serieOpt.get();
+				}
+				
+				config.setSerie(serie);
+
+				log.info("[ADMIN] -- /configuracion -- {} Ha añadido la configuracion {} a la base de datos con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+				
+				this.configuracionRepo.save(config);
+				
+				serie.addConfiguracion(config);
+				
+				this.seriesRepo.save(serie);				
+				break;
+			}
+			case CPConstants.GET:
+			{
+				response = new LinkedList<ResponseConfiguracion>();
+				List<Configuracion> configuraciones = this.configuracionRepo.findAll();
+				
+				for(Configuracion config:configuraciones)
+				{
+					if(uuid!=null && !config.getSerie().getUuid().equals(uuid))
+					{
+						continue;
+					}
+					
+					String serie = this.encryptor.decrypt(config.getSerie().getProducto().getNombre());
+					serie+= " "+this.encryptor.decrypt(config.getSerie().getVariante());
+					List<Map<String,Object>> armazon = new LinkedList<Map<String,Object>>();
+					
+					for(Map<String,Object> item:config.getArmazon())
+					{
+						String nombre = (String) item.get("nombre");
+						item.put("nombre", this.encryptor.decrypt(nombre));
+						armazon.add(item);
+					}
+					
+					List<Map<String,Object>> extras = new LinkedList<Map<String,Object>>();
+					
+					if(config.getExtras()!=null)
+					{
+						
+						for(Map<String,Object> item:config.getExtras())
+						{
+							String nombre = (String) item.get("nombre");
+							item.put("nombre", this.encryptor.decrypt(nombre));
+							extras.add(item);
+						}
+					}
+					
+					ResponseConfiguracion configDTO = new ResponseConfiguracion(config.getReferencia(), config.getFondo(),
+							config.getAncho(), config.getAlto(),config.getAltoMax(),config.getFondoMin(),config.getFondoMax(),config.getPrecioMedidaFondoEsp(),config.getPrecioMedidaAnchoEsp(),config.getPrecioMedidaAltoEsp() , armazon, extras, serie);
+					response.add(configDTO);
+				}
+				
+				log.info("[ADMIN] -- /configuracion -- {} Ha solicitado un listado de configuraciones con permiso de {} -- {}",usrToken,rol,seguridad);
+				break;
+			}
+			case CPConstants.PATCH:
+			{
+				Optional<Configuracion> configOpt = this.configuracionRepo.findById(referencia);
+				
+				if(!configOpt.isPresent())
+				{
+					log.warn("[AVISO] -- /configuracion -- {} Ha solicitado una configuracion que no existe con un permiso de {} -- {}",usrToken,rol,seguridad);
+					throw new CPException(404,"Dato o datos no encontrados");
+				}
+								
+				if(!this.validation.validateConfiguration(body))
+				{
+					log.warn("[AVISO] -- /configuracion -- {} Ha introducido datos erroneos para subir una configuracion con permiso de {} -- {}",usrToken,rol,seguridad);
+					throw new CPException(400,"Datos invalidos");
+				}
+				
+				Configuracion config = configOpt.get();
+				
+				List<Map<String,Object>> armazonSaneado = this.validation.sanearArmazon(body.getArmazon());
+				List<Map<String,Object>> extrasSaneado = this.validation.sanearExtras(body.getExtras());
+
+				if(armazonSaneado.size()==0)
+				{
+					log.warn("[AVISO] -- /configuracion -- {} Ha introducido un armazon erroneo en la configuracion con permiso de {} -- {}",usrToken,rol,seguridad);
+					throw new CPException(400,"Datos invalidos");
+				}
+				
+				// Ternario para mantener el valor de extrasSaneado en caso de que su tamaño sea > 0
+				extrasSaneado = extrasSaneado.size()>0 ? extrasSaneado : null; 
+				
+				config.setFondo(body.getFondo());
+				config.setAncho(body.getAncho());
+				config.setAlto(body.getAlto());
+				config.setAltoMax(body.getAltoMax());
+				config.setFondoMin(body.getFondoMin());
+				config.setFondoMax(body.getFondoMax());
+				config.setPrecioMedidaFondoEsp(body.getPrecioMedidaFondoEsp());
+				config.setPrecioMedidaAnchoEsp(body.getPrecioMedidaAnchoEsp());
+				config.setPrecioMedidaAltoEsp(body.getPrecioMedidaAltoEsp());
+				config.setArmazon(armazonSaneado);
+				config.setExtras(extrasSaneado);
+				
+				Serie serie = this.validation.findSerie(body.getSerie());
+				
+				if(serie==null)
+				{
+					Optional<Serie> serieOpt = this.seriesRepo.findById(body.getSerie());
+					
+					if(!serieOpt.isPresent())
+					{
+						log.warn("[AVISO] -- /configuracion -- {} Ha introducido una serie erronea en una configuración con permiso de {} -- {}",usrToken,rol,seguridad);
+						throw new CPException(400,"Datos invalidos");
+					}
+					
+					serie = serieOpt.get();
+				}
+				
+				config.setSerie(serie);
+				
+				log.info("[ADMIN] -- /configuracion -- {} Ha actualizado la configuracion {} a la base de datos con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+				
+				this.configuracionRepo.save(config);
+				
+				serie.addConfiguracion(config);
+				
+				this.seriesRepo.save(serie);	
+				
+				break;
+			}
+			case CPConstants.DELETE:
+			{
+				Optional<Configuracion> configOpt = this.configuracionRepo.findById(referencia);
+				
+				if(!configOpt.isPresent())
+				{
+					log.warn("[AVISO] -- /configuracion -- {} Ha solicitado una configuracion que no existe con un permiso de {} -- {}",usrToken,rol,seguridad);
+					throw new CPException(404,"Dato o datos no encontrados");
+				}
+				
+				Configuracion toDelete = configOpt.get();
+				log.info("[ADMIN] -- /configuracion -- {} Ha eliminado la configuracion {} de la base de datos con permiso de {} -- {}",usrToken,toDelete.getReferencia(),rol,seguridad);
+				this.configuracionRepo.delete(toDelete);
+				
+				break;
+			}
+			default:
+			{
+				log.warn("[AVISO] -- /configuracion -- {} Ha intentado acceder a la gestion de configuraciones sin un metodo valido con un permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(403,"No tienes permiso");
+			}
+		}
+		
+		this.validation.destroy();
+		
+		return response;
+			
+	}
+	
+	/**
+	 * Metodo que permite que un usuario configure un producto en base a la referencia escogida
+	 * @param body
+	 * @param rol
+	 * @param seguridad
+	 * @param usrToken
+	 * @param usuario
+	 * @throws CPException
+	 */
+	@Transactional
+	public void configureProduct(SeleccionDTO body,String rol,String seguridad,String usrToken,Usuario usuario) throws CPException
+	{
+		this.validation.initialize(null, frenteRepo, acabadoRepo, null, seriesRepo, configuracionRepo, encryptor);
+
+		String referencia = "";
+		
+		if(body.getAncho()!=null || body.getFondo()!=null)
+		{
+			referencia = this.chooseReferencia(body.getSerie(), body.getAncho(),body.getFondo());
+		}
+		else
+		{
+			referencia = body.getReferencia();
+		}
+		
+				
+		if(!rol.equals(CPConstants.SUPADMIN_ROLE) &&  !rol.equals(CPConstants.ADMIN_ROLE) && !rol.equals(CPConstants.CLIENTE_ROLE))
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado acceder a la gestión de configuraciones con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(403,"No tienes permiso");
+		}
+		
+		if(referencia.equals("error"))
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con una medida de ancho erronea con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		Optional<Configuracion> configuracionOpt = this.configuracionRepo.findById(referencia);
+		
+		if(!configuracionOpt.isPresent())
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con una referencia de configuración erronea con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Datos no encontrados");
+		}
+		
+		Configuracion config = configuracionOpt.get();
+		
+		// Fase de validacion de medidas
+		
+		if(body.getAlto()!=null)
+		{
+			if(body.getAlto()>config.getAltoMax() && body.getAlto()<config.getAlto())
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con una medida de alto erronea con un permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(400,"Datos inválidos");
+			}
+		}
+		
+		ProductoConfigurado seleccion = new ProductoConfigurado();
+		
+		String uuid = UUID.randomUUID().toString();		
+		
+		Acabado armazon = this.validation.findAcabado(body.getArmazon());
+		
+		// Fase de recuperación de entidades
+		
+		if(armazon==null)
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un armazón erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Datos no encontrados");
+		}
+		
+		Frente frente = this.validation.findFrentes(body.getFrente());
+		
+		if(frente == null)
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un frente erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Datos no encontrados");
+		}
+		
+		Acabado acabadoFrente = this.validation.findAcabado(body.getAcabadoFrente());
+		
+		if(acabadoFrente == null)
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un armazon de frente erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Datos no encontrados");
+		}
+		
+		Acabado acabadoTirador = this.validation.findAcabado(body.getAcabadoTirador());
+		
+		Acabado acabadoRegleta = this.validation.findAcabado(body.getAcabadoRegleta());
+		
+		if(body.getAcabadoTirador() != null) 
+		{
+			if(acabadoTirador==null)
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un acabdo de tirador erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(404,"Datos no encontrados");
+			}
+		}
+		
+		if(body.getAcabadoRegleta() != null) 
+		{
+			if(acabadoRegleta==null)
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un acabdo de regleta erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(404,"Datos no encontrados");
+			}
+		}
+		
+		// Fase de validacion de entidades
+				
+		List<Map<String,Object>> acabadoConfig = config.getArmazon();
+		float precioArmazon = this.validateAcabado(acabadoConfig, body.getArmazon());
+		
+		if(precioArmazon==-1)
+		{
+			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un armazón erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+			throw new CPException(400,"Datos inválidos");
+		}
+		
+		float precioFrente = this.validateAcabado(acabadoConfig, body.getAcabadoFrente());
+		
+		if(precioFrente==-1)
+		{
+			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un armazón de frente inexistente en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+			throw new CPException(400,"Datos inválidos");
+		}
+		
+		float precioTirador = 0;
+		
+		if(acabadoTirador != null)
+		{
+			precioTirador = this.validateAcabado(acabadoConfig, body.getAcabadoTirador());
+			if(precioTirador == -1)
+			{
+				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un acabado de tirador erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+				throw new CPException(400,"Datos inválidos");
+			}
+		}
+		
+		float precioRegleta = 0;
+		
+		if(acabadoRegleta != null)
+		{
+			precioRegleta = this.validateAcabado(acabadoConfig, body.getAcabadoRegleta());
+			if(precioRegleta == -1)
+			{
+				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un acabado de regleta erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+				throw new CPException(400,"Datos inválidos");
+			}
+		}
+		
+		float precioFinal = 0;
+		
+		// Si hay acabados especiales, en vez de elegir el precio más alto se suman
+		if(this.isEspecial(armazon.getTipos()) || this.isEspecial(acabadoFrente.getTipos()))
+		{
+			precioFinal += precioArmazon + precioFrente;
+		}
+		else
+		{
+			// Ternario para definir el precio más alto del armazon o el acabado del frente
+			precioFinal = precioArmazon > precioFrente ? precioArmazon : precioFrente;
+		}
+			
+		precioFinal += precioTirador + precioRegleta;
+		precioFinal = (precioFinal * body.getCantidad());
+		
+		float fondo = config.getFondo();
+		float ancho = config.getAncho();
+		float alto = config.getAlto();
+		
+		if(body.getFondo()!=null)
+		{
+			if(body.getFondo().floatValue() != fondo)
+			{
+				precioFinal+=config.getPrecioMedidaFondoEsp();
+				fondo = body.getFondo();
+				seleccion.setFondo(fondo);
+			}
+		}
+		
+		if(body.getAncho()!=null)
+		{
+			if(body.getAncho().floatValue() != ancho)
+			{
+				precioFinal+=config.getPrecioMedidaAnchoEsp();
+				ancho = body.getAncho();
+				seleccion.setAncho(ancho);
+			}
+		}
+		
+		if(body.getAlto()!=null)
+		{
+			if(body.getAlto().floatValue() != alto)
+			{
+				precioFinal+=config.getPrecioMedidaAltoEsp();
+				alto = body.getAlto();
+				seleccion.setAlto(alto);
+			}
+		}
+		// Fase de inserción de datos
+		
+		seleccion.setUuid(uuid);
+		seleccion.setConfiguracion(config);
+		seleccion.setUsuario(usuario);
+		seleccion.setFrente(frente);
+		seleccion.setAcabado(armazon);
+		seleccion.setAcabadoFrente(acabadoFrente);
+		seleccion.setAcabadoTirador(acabadoTirador);
+		seleccion.setAcabadoRegleta(acabadoRegleta);
+		seleccion.setPrecioArmazon(precioArmazon);
+		seleccion.setPrecioFrente(precioFrente);
+		seleccion.setPrecioTirador(precioTirador);
+		seleccion.setPrecioRegleta(precioRegleta);
+		seleccion.setPrecioFinal(precioFinal);
+		seleccion.setCantidad(body.getCantidad());
+		seleccion.setFecha(LocalDateTime.now());
+		
+		
+		log.info("[ACCION] -- /configure -- {} Ha configurado un producto con referencia {} con permiso de {} -- {}",usrToken,config.getReferencia(),rol,seguridad);
+		this.seleccionRepo.save(seleccion);
+		this.seleccionRepo.flush();
+		usuario.addProducto(seleccion);
+		
+		BulkProductosUsuario bulk = this.bulkRepo.findByUsuarioUuidAndEnd(usuario, false);
+		
+		if(bulk == null)
+		{
+			boolean end = body.getBulk() != null ? !body.getBulk() : true;
+			bulk = new BulkProductosUsuario();
+			List<String> selecciones = List.of(seleccion.getUuid());
+			uuid = UUID.randomUUID().toString();
+			
+			bulk.setUuid(uuid);
+			bulk.setUsuarioUuid(usuario);
+			bulk.setProductos(selecciones);
+			bulk.setEnd(end);
+			this.bulkRepo.save(bulk);
+			this.bulkRepo.flush();
+			usuario.addBulk(bulk);
+		}
+		else if(body.getBulk())
+		{
+			List<String> selecciones = bulk.getProductos();
+			selecciones.add(seleccion.getUuid());
+			bulk.setEnd(false);
+			this.bulkRepo.save(bulk);
+			this.bulkRepo.flush();
+			usuario.addBulk(bulk);
+		}
+		else
+		{
+			List<String> selecciones = bulk.getProductos();
+			selecciones.add(seleccion.getUuid());
+			bulk.setEnd(true);
+			this.bulkRepo.save(bulk);
+			this.bulkRepo.flush();
+			usuario.addBulk(bulk);
+		}
+		
+		this.userRepo.save(usuario);
+		this.userRepo.flush();
+	
+	}
+	
+	public List<ResponseSeleccion> getSelecciones(Usuario usuario,String rol, String seguridad,String usrToken)
+	{
+		List<ResponseSeleccion> response = new LinkedList<ResponseSeleccion>();
+		
+		LocalDateTime fecha = null;
+		
+		for(BulkProductosUsuario bulk:usuario.getSelecciones())
+		{
+			SeleccionDTO [] selecciones = new SeleccionDTO[bulk.getProductos().size()];
+			int index = 0;
+			
+			for(String producto:bulk.getProductos())
+			{
+				Optional<ProductoConfigurado> seleccionOpt = this.seleccionRepo.findById(producto);
+				if(seleccionOpt.isPresent())
+				{
+					ProductoConfigurado item = seleccionOpt.get();
+					String uuid = item.getUuid();
+					String referencia = item.getConfiguracion().getReferencia();
+					String armazon = this.encryptor.decrypt(item.getAcabado().getNombre());
+					String acabadoFrente = this.encryptor.decrypt(item.getAcabadoFrente().getNombre());
+					String frente = this.encryptor.decrypt(item.getFrente().getNombre());
+					String acabadoTirador = null;
+					String acabadoRegleta = null;
+					
+					if(item.getAcabadoTirador()!=null)
+					{
+						acabadoTirador = this.encryptor.decrypt(item.getAcabadoTirador().getNombre());
+					}
+					
+					if(item.getAcabadoRegleta() != null)
+					{
+						acabadoRegleta = this.encryptor.decrypt(item.getAcabadoRegleta().getNombre());
+				    }
+					
+					Float precioArmazon = item.getPrecioArmazon();
+					Float precioFrente = item.getPrecioFrente();
+					Float precioTirador = item.getPrecioTirador();
+					Float precioRegleta = item.getPrecioRegleta();
+					Float precioFinal = item.getPrecioFinal();
+					
+					int cantidad = item.getCantidad();
+					
+					// Estos ternarios asignan el valor las medidas del producto configurado que serían las medidas especiales, en caso de ser nulas, se asignan la de la referencia escogida
+					float fondo = item.getFondo() != null ? item.getFondo() : item.getConfiguracion().getFondo();
+					float ancho = item.getAncho() != null ? item.getAncho() : item.getConfiguracion().getAncho();
+					float alto = item.getAlto() != null ? item.getAlto() : item.getConfiguracion().getAlto();
+					
+					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
+					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
+					
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, precioFrente, frente, acabadoFrente, precioTirador, acabadoTirador, precioRegleta, acabadoRegleta, precioFinal, cantidad,null);
+					selecciones[index] = seleccion;
+					
+					if(fecha==null)
+					{
+						fecha = item.getFecha();
+					}
+					else if(fecha.isAfter(item.getFecha()))
+					{
+						fecha = item.getFecha();
+					}
+				}
+				else
+				{
+					selecciones[index] = null;
+				}
+				index++;
+			}
+			
+			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario.getUuid(),selecciones,fecha);
+			
+			response.add(seleccion);
+			
+		}
+		
+		log.info("[ACCION] -- /configure -- {} Ha solicitado una lista de sus productos configurados con permiso de {} -- {}",usrToken,rol,seguridad);
+		
+		return response;
+	}
+	
+	private float validateAcabado(List<Map<String,Object>> acabadoConfig,String acabado)
+	{
+		int index = 0;
+		boolean found = false;
+		float precio = 0;
+		Number precioRaw = null;
+		
+		while(index<acabadoConfig.size() && !found)
+		{
+			Map<String,Object> item = acabadoConfig.get(index); 
+			
+			if(this.encryptor.decrypt( (String) item.get("nombre")).equals(acabado))
+			{
+				found = true;
+				precioRaw = (Number) item.get("precio");
+				precio = precioRaw.floatValue();
+			}
+			
+			index++;
+		}
+		
+		if(!found)
+		{
+			precio = -1;
+		}
+		
+		return precio;
+	}
+	
+	private boolean isEspecial(String [] tipos)
+	{
+		boolean especial = false;
+		for(String tipo:tipos)
+		{
+			tipo = this.encryptor.decrypt(tipo);
+			especial = tipo.equalsIgnoreCase("especial");
+			if(especial)
+			{
+				break;
+			}
+		}
+		
+		return especial;
+	}
+	
+	/**
+	 * Metodo que escoge la referencia de un producto en base a medidas especiales
+	 * @param variante
+	 * @param ancho
+	 * @param fondo
+	 * @return
+	 */
+	private String chooseReferencia(String uuid,Float ancho,Float fondo)
+	{
+		String referencia = "";
+		boolean activarFondo = false;
+		
+		
+		Optional<Serie> serieOpt = this.seriesRepo.findById(uuid);
+		
+		Serie serie = serieOpt.isPresent() ? serieOpt.get() : null;
+		
+		List<Configuracion> referencias = List.copyOf(serie.getConfiguracion());
+		
+		if(referencias==null)
+		{
+			referencia = "error";
+		}
+		else if(referencias.size()==0)
+		{
+			referencia = "error";
+		}
+		
+		if(fondo == null)
+		{
+			referencia = "error";
+		}
+		
+		
+		if(ancho!=null && !referencia.equals("error"))
+		{
+			float [] medidas = new float[referencias.size()];
+			
+			for(int i = 0;i<medidas.length;i++)
+			{
+				medidas[i] = referencias.get(i).getAncho();
+			}
+			
+			Arrays.sort(medidas);
+			
+			if(ancho.floatValue()<medidas[0] || ancho.floatValue()>medidas[medidas.length-1])
+			{
+				referencia = "error";
+			}
+			else
+			{
+				int index = 0;
+				float modulo = 0;
+				
+				// Se evita que el primer item sea 0 por división infinita
+				modulo = medidas[0] != 0 ? ancho % medidas[0] : ancho;
+				
+				for(int i = 1;i<medidas.length;i++)
+				{
+					float item = medidas[i];
+					
+					if(item==0)
+					{
+						modulo = ancho;
+					}
+					else
+					{
+						if(modulo>(ancho%item))
+						{
+							modulo = ancho%item;
+							index = i;
+						}
+					}	
+				}
+				
+				Configuracion configuracion = null;
+				
+				for(Configuracion item:referencias)
+				{
+					if(item.getAncho()==medidas[index] && configuracion == null)
+					{
+						configuracion = item;
+					}
+				}
+				
+				// Si configuracion es nula ponemos referencia = error y nos saltamos el código
+				if(configuracion == null)
+				{
+					referencia = "error";
+				}
+				
+				
+				if(!referencia.equals("error"))
+				{
+					// Si hay fondo especial aun no se asigna referencia si no se asigna
+					if(fondo>configuracion.getFondoMin() && fondo<configuracion.getFondoMax())
+					{
+						//Se asigna el ancho colocado al ancho encontrado en la configuracion por si el usuario introduce ancho especial y fondo especial
+						ancho = configuracion.getAncho();
+						
+						activarFondo = true;
+					}
+					else
+					{
+						//Se escoge la referencia exacta en fondo y ancho
+						for(Configuracion item:referencias)
+						{
+							if(item.getAncho()==medidas[index] && item.getFondo()==fondo.floatValue())
+							{
+								referencia = item.getReferencia();
+							}
+						}
+						
+						// En caso de que sea nulo se devuelve error
+						if(referencia.isBlank())
+						{
+							referencia = "error";
+						}
+						
+					}
+				}
+				
+			}
+		}
+		
+		if(activarFondo && !referencia.equals("error"))
+		{
+			float fondoMax = 0;
+			
+			for(Configuracion item:referencias)
+			{
+				if(fondoMax<item.getFondo())
+				{
+					fondoMax = item.getFondo();
+				}
+			}
+						
+			for(Configuracion item:referencias)
+			{
+				if(item.getAncho()==ancho.floatValue() &&  item.getFondo()==fondoMax && referencia.isBlank())
+				{
+					referencia = item.getReferencia();
+				}
+			}
+			
+		}
+		
+		return referencia;
+	}
+	
+}

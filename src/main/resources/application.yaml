@@ -1,7 +1,7 @@
 spring:
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: validate
   datasource:
     driverClassName: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/configurador_campoaras
@@ -10,19 +10,26 @@ spring:
     hikari:
       connection-timeout: 60000
       maximum-pool-size: 5
-#  mail:
-#    host: smtp.gmail.com
-#    port: 587
-#    username: ${MAIL_USERNAME}
-#    password: ${MAIL_PASSWORD}
-#    properties:
-#      mail:
-#        smtp:
-#          auth: true
-#          starttls:
-#            enable: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${ADMIN_MAIL}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   server:
     address: 192.168.1.169
+    #address: 192.168.0.177
+  
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 10MB
     
 springdoc:
   swagger-ui:

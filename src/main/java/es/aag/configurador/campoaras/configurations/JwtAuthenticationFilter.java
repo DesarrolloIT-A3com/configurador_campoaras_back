@@ -1,6 +1,8 @@
 package es.aag.configurador.campoaras.configurations;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import es.aag.configurador.campoaras.security.GeneralSecurity;
 import es.aag.configurador.campoaras.services.CustomUserDetailsService;
+import es.aag.configurador.campoaras.utils.CPConstants;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -25,6 +28,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
 	private final Logger log = LogManager.getLogger();
 	private final JwtUtil jwtUtil;
     private final CustomUserDetailsService userDetailsService;
+    private final List<String> PUBLIC_ROUTES = Arrays.asList(CPConstants.ROUTES_JWT);
+
 
     public JwtAuthenticationFilter(JwtUtil jwtUtil, CustomUserDetailsService userDetailsService)
     {
@@ -37,6 +42,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException 
     {
+    	// Si es ruta pública se pasa sin tocar la cookie para evitar filtros falsos
+    	if(this.isPublicRoute(request.getRequestURI()))
+    	{
+    		chain.doFilter(request, response);
+    		return;
+    	}
     	
     	GeneralSecurity security = new GeneralSecurity();
     	String ip = security.getClientIPAddress(request);
@@ -58,9 +69,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         		}
         	}
         }
+        
+        if(jwt == null)
+        {
+        	chain.doFilter(request, response);
+        	return;
+        }
 
         // Validación de JWT solo si existe y no hay auth previa
-        if (jwt != null && SecurityContextHolder.getContext().getAuthentication() == null) 
+        if (SecurityContextHolder.getContext().getAuthentication() == null) 
         {
         	try
         	{
@@ -96,6 +113,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         
         chain.doFilter(request, response);
         
+    }
+    
+    private boolean isPublicRoute(String requestUri)
+    {	
+    	return PUBLIC_ROUTES.stream().anyMatch(route -> 
+    	{
+    		if (route.endsWith("/**"))
+            {
+                String base = route.substring(0, route.length() - 3);
+                return requestUri.startsWith(base);
+            }
+            return route.equals(requestUri);
+    	});
     }
     
 }
