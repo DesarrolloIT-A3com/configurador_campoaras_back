@@ -1,10 +1,15 @@
 package es.aag.configurador.campoaras.rest;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -928,4 +933,48 @@ public class ManagmentRestController
 			return ResponseEntity.status(500).body("Error interno de servidor");		
 		}
 	}
+	
+	@RequestMapping(method = RequestMethod.GET,value = "/export")
+	public ResponseEntity<?>export(@RequestParam(value="uuid",required = true) String uuid,
+	HttpServletRequest request,Authentication authentication)
+	{
+		try 
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/export", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/export", usuario.getUSRToken());
+		
+			String response = this.configService.export(uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			byte[] csvBytes = response.getBytes(StandardCharsets.UTF_8);
+
+		    HttpHeaders headers = new HttpHeaders();
+		    headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));
+		    headers.setContentDisposition(
+		        ContentDisposition.attachment().filename("export.csv").build()
+		    );
+		    headers.setContentLength(csvBytes.length);
+			
+			return new ResponseEntity<>(csvBytes, headers, HttpStatus.OK);
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /load -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+		
+	}
+
 }
+

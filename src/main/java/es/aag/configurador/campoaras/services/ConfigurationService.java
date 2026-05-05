@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -660,6 +661,89 @@ private Logger log = LogManager.getLogger();
 		return response;
 	}
 	
+	public String export(String uuid, String rol, String seguridad, String usrToken) throws CPException
+	{
+		
+		List<Configuracion> configuraciones = new LinkedList<Configuracion>();
+		
+		if(uuid != null && !uuid.isBlank())
+		{
+			Optional<Serie> serieOpt = this.seriesRepo.findById(uuid);
+			
+			if(!serieOpt.isPresent())
+			{
+				log.warn("[AVISO] -- /export -- {} Ha intentado exportar configuraciones con una serie no válida con permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(400,"Datos inválidos");
+			}
+			
+			Serie serie = serieOpt.get();
+			
+			for(Configuracion item:this.configuracionRepo.findAll())
+			{
+				if(item.getSerie().equals(serie))
+				{
+					configuraciones.add(item);
+				}
+			} 
+		}
+		else
+		{
+			log.warn("[AVISO] -- /export -- {} Ha intentado exportar configuraciones sin identificar la serie afectada con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos inválidos");
+		}
+		
+		Configuracion config = configuraciones.getFirst();
+		
+		List<String> cabeceras = config.getArmazon().stream()
+		        .map(acabado -> (String) acabado.get("nombre"))
+		        .collect(Collectors.toList());
+		
+		StringBuilder content = new StringBuilder();
+		content.append("referencia, fondo, ancho, alto, alto max, fondo min, fondo max, fondo especial, ancho especial, alto especial");
+		cabeceras.forEach(nombre -> content.append(",").append(this.encryptor.decrypt(nombre)));
+		content.append("\n");
+		
+		
+		for (Configuracion c : configuraciones) 
+		{
+			content.append(c.getReferencia()+",");
+			content.append(c.getFondo()+",");
+			content.append(c.getAncho()+",");
+			content.append(c.getAlto()+",");
+			content.append(c.getAltoMax()+",");
+			content.append(c.getFondoMin()+",");
+			content.append(c.getFondoMax()+",");
+			content.append(c.getPrecioMedidaFondoEsp()+",");
+			content.append(c.getPrecioMedidaAnchoEsp()+",");
+			content.append(c.getPrecioMedidaAltoEsp()+",");
+			
+			for(String acabado:cabeceras)
+			{
+				for(Map<String,Object> item:c.getArmazon())
+				{
+					String condicion = (String) item.get("nombre");
+					condicion = this.encryptor.decrypt(condicion).toLowerCase();
+					
+					if(condicion.equals(this.encryptor.decrypt(acabado).toLowerCase()))
+					{
+						Number rawValue = (Number) item.get("precio");
+						float precioValue = rawValue.floatValue();
+						content.append(precioValue+",");
+					}
+				
+				}
+			}
+			content.append("\n");
+			
+		}
+		return content.toString();
+		
+		/* EJEMPLO DE LANZAR ERROR
+		log.warn("[AVISO -- /export -- {} Ha configurado un producto con un acabado de tirador erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+		throw new CPException(400,"Datos inválidos");
+		*/
+	}
+
 	private float validateAcabado(List<Map<String,Object>> acabadoConfig,String acabado)
 	{
 		int index = 0;
