@@ -18,4 +18,6 @@ public class ResponseSeleccion
 	private SeleccionDTO [] selecciones;
 	
 	private LocalDateTime fecha;
+	
+	private boolean finished;
 }

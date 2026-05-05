@@ -5,7 +5,6 @@ import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
@@ -30,8 +29,20 @@ public class Color
 	@Column(nullable = false,unique=true)
 	private String nombre;
 	
-	@ManyToMany(mappedBy = "colores", fetch = FetchType.LAZY)
+	@ManyToMany(mappedBy = "colores")
 	private Set<Acabado> acabados = new HashSet<>();
+	
+	@OneToMany(mappedBy = "colorArmazon")
+	private Set<ProductoConfigurado> colorArmazon = new HashSet<>();
+	
+	@OneToMany(mappedBy = "colorFrente")
+	private Set<ProductoConfigurado> colorFrente = new HashSet<>();
+	
+	@OneToMany(mappedBy = "colorTirador")
+	private Set<ProductoConfigurado> colorTirador = new HashSet<>();
+	
+	@OneToMany(mappedBy = "colorRegleta")
+	private Set<ProductoConfigurado> colorRegleta = new HashSet<>();
 	
 	
 	public void addAcabado(Acabado acabado)

@@ -41,6 +41,10 @@ public class ProductoConfigurado
     @JoinColumn(name = "acabado_id")
     private Acabado acabado;
 	
+	@ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "color_armazon_id")
+    private Color colorArmazon;
+	
 	@Column
 	private float precioFrente;
 	
@@ -51,6 +55,10 @@ public class ProductoConfigurado
 	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "acabado_frente_id")
     private Acabado acabadoFrente;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "color_frente_id")
+    private Color colorFrente;
 
 	@Column
 	private float precioTirador;
@@ -59,6 +67,10 @@ public class ProductoConfigurado
     @JoinColumn(name = "acabado_tirador_id")
     private Acabado acabadoTirador;
 	
+	@ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "color_tirador_id")
+    private Color colorTirador;
+	
 	@Column
 	private float precioRegleta;
 	
@@ -66,6 +78,9 @@ public class ProductoConfigurado
     @JoinColumn(name = "acabado_regleta_id")
     private Acabado acabadoRegleta;
 	
+	@ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "color_regleta_id")
+    private Color colorRegleta;
 	
 	// Estas columnas son únicas para las medidas especiales u otras medidas las cuales oscilan un rango entre las medidas de una referencia
 	@Column

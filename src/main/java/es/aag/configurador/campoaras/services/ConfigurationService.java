@@ -19,6 +19,7 @@ import es.aag.configurador.campoaras.dto.ResponseSeleccion;
 import es.aag.configurador.campoaras.dto.SeleccionDTO;
 import es.aag.configurador.campoaras.entities.Acabado;
 import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
+import es.aag.configurador.campoaras.entities.Color;
 import es.aag.configurador.campoaras.entities.Configuracion;
 import es.aag.configurador.campoaras.entities.Frente;
 import es.aag.configurador.campoaras.entities.ProductoConfigurado;
@@ -26,6 +27,7 @@ import es.aag.configurador.campoaras.entities.Serie;
 import es.aag.configurador.campoaras.entities.Usuario;
 import es.aag.configurador.campoaras.repositories.IAcabadoRepository;
 import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
+import es.aag.configurador.campoaras.repositories.IColorRepository;
 import es.aag.configurador.campoaras.repositories.IConfiguracionRepository;
 import es.aag.configurador.campoaras.repositories.IFrenteRepository;
 import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
@@ -55,6 +57,9 @@ private Logger log = LogManager.getLogger();
 	
 	@Autowired
 	private IAcabadoRepository acabadoRepo;
+	
+	@Autowired
+	private IColorRepository colorRepo;
 	
 	@Autowired
 	private IFrenteRepository frenteRepo;
@@ -321,10 +326,16 @@ private Logger log = LogManager.getLogger();
 	 * @throws CPException
 	 */
 	@Transactional
-	public void configureProduct(SeleccionDTO body,String rol,String seguridad,String usrToken,Usuario usuario) throws CPException
+	public String configureProduct(SeleccionDTO body,String rol,String seguridad,String usrToken,Usuario usuario) throws CPException
 	{
-		this.validation.initialize(null, frenteRepo, acabadoRepo, null, seriesRepo, configuracionRepo, encryptor);
+		this.validation.initialize(null, frenteRepo, acabadoRepo, colorRepo, seriesRepo, configuracionRepo, encryptor);
 
+		if(!rol.equals(CPConstants.SUPADMIN_ROLE) &&  !rol.equals(CPConstants.ADMIN_ROLE) && !rol.equals(CPConstants.CLIENTE_ROLE))
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado acceder a la gestión de configuraciones con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(403,"No tienes permiso");
+		}
+		
 		String referencia = "";
 		
 		if(body.getAncho()!=null || body.getFondo()!=null)
@@ -336,17 +347,10 @@ private Logger log = LogManager.getLogger();
 			referencia = body.getReferencia();
 		}
 		
-				
-		if(!rol.equals(CPConstants.SUPADMIN_ROLE) &&  !rol.equals(CPConstants.ADMIN_ROLE) && !rol.equals(CPConstants.CLIENTE_ROLE))
-		{
-			log.warn("[AVISO] -- /configure -- {} Ha intentado acceder a la gestión de configuraciones con un permiso de {} -- {}",usrToken,rol,seguridad);
-			throw new CPException(403,"No tienes permiso");
-		}
-		
 		if(referencia.equals("error"))
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con una medida de ancho erronea con un permiso de {} -- {}",usrToken,rol,seguridad);
-			throw new CPException(400,"Datos invalidos");
+			throw new CPException(400,"El ancho seleccionado es erroneo");
 		}
 		
 		Optional<Configuracion> configuracionOpt = this.configuracionRepo.findById(referencia);
@@ -354,7 +358,7 @@ private Logger log = LogManager.getLogger();
 		if(!configuracionOpt.isPresent())
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con una referencia de configuración erronea con un permiso de {} -- {}",usrToken,rol,seguridad);
-			throw new CPException(404,"Datos no encontrados");
+			throw new CPException(404,"Las medidas seleccionadas no presentan ninguna configuracion");
 		}
 		
 		Configuracion config = configuracionOpt.get();
@@ -366,7 +370,7 @@ private Logger log = LogManager.getLogger();
 			if(body.getAlto()>config.getAltoMax() && body.getAlto()<config.getAlto())
 			{
 				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con una medida de alto erronea con un permiso de {} -- {}",usrToken,rol,seguridad);
-				throw new CPException(400,"Datos inválidos");
+				throw new CPException(400,"El alto seleccionado es erroneo");
 			}
 		}
 		
@@ -374,14 +378,22 @@ private Logger log = LogManager.getLogger();
 		
 		String uuid = UUID.randomUUID().toString();		
 		
-		Acabado armazon = this.validation.findAcabado(body.getArmazon());
-		
 		// Fase de recuperación de entidades
+		
+		Acabado armazon = this.validation.findAcabado(body.getArmazon());
 		
 		if(armazon==null)
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un armazón erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
-			throw new CPException(404,"Datos no encontrados");
+			throw new CPException(404,"Se ha seleccionado un acabado erroneo para el armazon dado");
+		}
+		
+		Color colorArmazon = this.validation.findColor(body.getColorArmazon());
+		
+		if(colorArmazon==null)
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de armazon erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Se ha seleccionado un color de armazon erroneo");
 		}
 		
 		Frente frente = this.validation.findFrentes(body.getFrente());
@@ -389,28 +401,47 @@ private Logger log = LogManager.getLogger();
 		if(frente == null)
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un frente erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
-			throw new CPException(404,"Datos no encontrados");
+			throw new CPException(404,"Se ha seleccionado un frente erroneo para el armazon dado");
 		}
-		
+			
 		Acabado acabadoFrente = this.validation.findAcabado(body.getAcabadoFrente());
 		
 		if(acabadoFrente == null)
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un armazon de frente erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
-			throw new CPException(404,"Datos no encontrados");
+			throw new CPException(404,"Se ha seleccionado un acabado erroneo para el frente dado");
+		}
+		
+		Color colorFrente = this.validation.findColor(body.getColorFrente());
+		
+		if(colorFrente==null)
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de frente erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Se ha seleccionado un color de frente erroneo");
 		}
 		
 		Acabado acabadoTirador = this.validation.findAcabado(body.getAcabadoTirador());
 		
 		Acabado acabadoRegleta = this.validation.findAcabado(body.getAcabadoRegleta());
 		
+		Color colorTirador = this.validation.findColor(body.getColorTirador());
+		
+		Color colorRegleta = this.validation.findColor(body.getColorRegleta());
+		
 		if(body.getAcabadoTirador() != null) 
 		{
 			if(acabadoTirador==null)
 			{
-				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un acabdo de tirador erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
-				throw new CPException(404,"Datos no encontrados");
+				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de tirador erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(404,"Se ha seleccionado un acabado erroneo para el tirador dado");
 			}
+			
+			if(colorTirador==null)
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de tirador erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(404,"Se ha seleccionado un color de tirador erroneo");
+			}
+				
 		}
 		
 		if(body.getAcabadoRegleta() != null) 
@@ -418,7 +449,13 @@ private Logger log = LogManager.getLogger();
 			if(acabadoRegleta==null)
 			{
 				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un acabdo de regleta erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
-				throw new CPException(404,"Datos no encontrados");
+				throw new CPException(404,"Se ha seleccionado un acabado erroneo para la regleta dada");
+			}
+			
+			if(colorRegleta==null)
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de regleta erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(404,"Se ha seleccionado un color de regleta erroneo");
 			}
 		}
 		
@@ -430,15 +467,33 @@ private Logger log = LogManager.getLogger();
 		if(precioArmazon==-1)
 		{
 			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un armazón erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-			throw new CPException(400,"Datos inválidos");
+			throw new CPException(400,"El armazon seleccionado no existe dentro de la configuracion dada");
 		}
 		
+		if(!armazon.getColores().contains(colorArmazon))
+		{
+			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el armazón dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+			throw new CPException(400,"El color del armazon dado no se encuentra en la configuración dada");
+		}
+		
+		if(!config.getSerie().getProducto().getFrentesProductos().contains(frente))
+		{
+			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un frente erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+			throw new CPException(400,"El frente seleccionado no se encuentra en el producto configurado");
+		}
+				
 		float precioFrente = this.validateAcabado(acabadoConfig, body.getAcabadoFrente());
 		
 		if(precioFrente==-1)
 		{
 			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un armazón de frente inexistente en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-			throw new CPException(400,"Datos inválidos");
+			throw new CPException(400,"El acabado del frente ni existe dentro de la configuracion dada");
+		}
+		
+		if(!acabadoFrente.getColores().contains(colorFrente))
+		{
+			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el frente dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+			throw new CPException(400,"El color del frente dado no se encuentra en la configuración dada");
 		}
 		
 		float precioTirador = 0;
@@ -451,6 +506,14 @@ private Logger log = LogManager.getLogger();
 				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un acabado de tirador erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
 				throw new CPException(400,"Datos inválidos");
 			}
+			
+			if(!acabadoTirador.getColores().contains(colorTirador))
+			{
+				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el tirador dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+				throw new CPException(400,"El color del tirador dado no se encuentra en la configuración dada");
+			}
+			
+			precioTirador = 0;
 		}
 		
 		float precioRegleta = 0;
@@ -463,6 +526,13 @@ private Logger log = LogManager.getLogger();
 				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un acabado de regleta erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
 				throw new CPException(400,"Datos inválidos");
 			}
+			
+			if(!acabadoRegleta.getColores().contains(colorRegleta))
+			{
+				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el tirador dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+				throw new CPException(400,"El color de la regleta dada no se encuentra en la configuración dada");
+			}
+			precioRegleta = 0;
 		}
 		
 		float precioFinal = 0;
@@ -478,7 +548,6 @@ private Logger log = LogManager.getLogger();
 			precioFinal = precioArmazon > precioFrente ? precioArmazon : precioFrente;
 		}
 			
-		precioFinal += precioTirador + precioRegleta;
 		precioFinal = (precioFinal * body.getCantidad());
 		
 		float fondo = config.getFondo();
@@ -524,6 +593,10 @@ private Logger log = LogManager.getLogger();
 		seleccion.setAcabadoFrente(acabadoFrente);
 		seleccion.setAcabadoTirador(acabadoTirador);
 		seleccion.setAcabadoRegleta(acabadoRegleta);
+		seleccion.setColorArmazon(colorArmazon);
+		seleccion.setColorFrente(colorFrente);
+		seleccion.setColorRegleta(colorRegleta);
+		seleccion.setColorTirador(colorTirador);
 		seleccion.setPrecioArmazon(precioArmazon);
 		seleccion.setPrecioFrente(precioFrente);
 		seleccion.setPrecioTirador(precioTirador);
@@ -532,19 +605,37 @@ private Logger log = LogManager.getLogger();
 		seleccion.setCantidad(body.getCantidad());
 		seleccion.setFecha(LocalDateTime.now());
 		
+		// Antes de salvar la configuracion se comprueba que el uuid del body en caso de que no venga vacío sea correcto
+		BulkProductosUsuario bulk = null;
+		
+		if(body.getUuid()!=null)
+		{
+			Optional<BulkProductosUsuario> optBulk = this.bulkRepo.findById(body.getUuid());
+			
+			if(!optBulk.isPresent())
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha introducido un uuid erroneo para obtener un conjunto de productos (bulk) con permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(403,"No tienes permiso");
+			}
+			
+			bulk = optBulk.get();
+		}
+		
 		
 		log.info("[ACCION] -- /configure -- {} Ha configurado un producto con referencia {} con permiso de {} -- {}",usrToken,config.getReferencia(),rol,seguridad);
 		this.seleccionRepo.save(seleccion);
 		this.seleccionRepo.flush();
 		usuario.addProducto(seleccion);
 		
-		BulkProductosUsuario bulk = this.bulkRepo.findByUsuarioUuidAndEnd(usuario, false);
+		// Se continua el flujo anterior, si el uuid viene vacío se crea un bulk nuevo
+		
 		
 		if(bulk == null)
 		{
 			boolean end = body.getBulk() != null ? !body.getBulk() : true;
 			bulk = new BulkProductosUsuario();
 			List<String> selecciones = List.of(seleccion.getUuid());
+			
 			uuid = UUID.randomUUID().toString();
 			
 			bulk.setUuid(uuid);
@@ -576,17 +667,37 @@ private Logger log = LogManager.getLogger();
 		
 		this.userRepo.save(usuario);
 		this.userRepo.flush();
+		
+		String valueReturn = body.getUuid()!=null ? "" : bulk.getUuid();
+		
+		return valueReturn;
 	
 	}
 	
-	public List<ResponseSeleccion> getSelecciones(Usuario usuario,String rol, String seguridad,String usrToken)
+	public List<ResponseSeleccion> getSelecciones(Boolean isEnd,String uuidBulk,Usuario usuario,String rol, String seguridad,String usrToken)
 	{
 		List<ResponseSeleccion> response = new LinkedList<ResponseSeleccion>();
 		
-		LocalDateTime fecha = null;
+		LocalDateTime fecha = null;		
 		
 		for(BulkProductosUsuario bulk:usuario.getSelecciones())
 		{
+			// Si hay filtro para selecciones finalizadas se aplica un continue en caso de que no se cumpla
+			if(isEnd!=null)
+			{
+				if(bulk.isEnd()!=isEnd)
+				{
+					continue;
+				}
+			}
+			
+			if(uuidBulk!=null)
+			{
+				if(!bulk.getUuid().equals(uuidBulk))
+				{
+					continue;
+				}
+			}
 			SeleccionDTO [] selecciones = new SeleccionDTO[bulk.getProductos().size()];
 			int index = 0;
 			
@@ -599,19 +710,27 @@ private Logger log = LogManager.getLogger();
 					String uuid = item.getUuid();
 					String referencia = item.getConfiguracion().getReferencia();
 					String armazon = this.encryptor.decrypt(item.getAcabado().getNombre());
+					String colorArmazon = this.encryptor.decrypt(item.getColorArmazon().getNombre());
 					String acabadoFrente = this.encryptor.decrypt(item.getAcabadoFrente().getNombre());
+					String colorFrente = this.encryptor.decrypt(item.getColorFrente().getNombre());
 					String frente = this.encryptor.decrypt(item.getFrente().getNombre());
 					String acabadoTirador = null;
 					String acabadoRegleta = null;
+					String colorTirador = null;
+					String colorRegleta = null;
 					
 					if(item.getAcabadoTirador()!=null)
 					{
 						acabadoTirador = this.encryptor.decrypt(item.getAcabadoTirador().getNombre());
+						colorTirador = this.encryptor.decrypt(item.getColorTirador().getNombre());
+
 					}
 					
 					if(item.getAcabadoRegleta() != null)
 					{
 						acabadoRegleta = this.encryptor.decrypt(item.getAcabadoRegleta().getNombre());
+						colorRegleta = this.encryptor.decrypt(item.getColorRegleta().getNombre());
+
 				    }
 					
 					Float precioArmazon = item.getPrecioArmazon();
@@ -630,7 +749,7 @@ private Logger log = LogManager.getLogger();
 					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
 					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
 					
-					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, precioFrente, frente, acabadoFrente, precioTirador, acabadoTirador, precioRegleta, acabadoRegleta, precioFinal, cantidad,null);
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,precioFinal, cantidad,null);
 					selecciones[index] = seleccion;
 					
 					if(fecha==null)
@@ -649,7 +768,7 @@ private Logger log = LogManager.getLogger();
 				index++;
 			}
 			
-			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario.getUuid(),selecciones,fecha);
+			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario.getUuid(),selecciones,fecha,bulk.isEnd());
 			
 			response.add(seleccion);
 			
@@ -658,6 +777,23 @@ private Logger log = LogManager.getLogger();
 		log.info("[ACCION] -- /configure -- {} Ha solicitado una lista de sus productos configurados con permiso de {} -- {}",usrToken,rol,seguridad);
 		
 		return response;
+	}
+	
+	public void delSeleccion(String uuid,String rol, String seguridad,String usrToken) throws CPException
+	{
+		Optional<BulkProductosUsuario> optBulk = this.bulkRepo.findById(uuid);
+		
+		if(!optBulk.isPresent())
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado eliminar un producto configurado inexistente con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Datos no encontrados");
+		}
+		
+		BulkProductosUsuario bulk = optBulk.get();
+		
+		log.info("[ACCION] -- /configure -- {} Ha eliminado el producto configurado {} con permiso de {} -- {}",usrToken,bulk.getUuid(),rol,seguridad);
+		this.bulkRepo.delete(bulk);
+		this.bulkRepo.flush();		
 	}
 	
 	private float validateAcabado(List<Map<String,Object>> acabadoConfig,String acabado)

@@ -7,9 +7,11 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import es.aag.configurador.campoaras.dto.ResponseSeleccion;
@@ -26,10 +28,10 @@ import es.aag.configurador.campoaras.utils.CPException;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
-@RequestMapping(value = "/v1/")
+@RequestMapping(value = "/v1")
 public class GeneralRestController 
 {
-private Logger log = LogManager.getLogger();
+	private Logger log = LogManager.getLogger();
 	
 	@Autowired
 	private IUsuarioRepository userRepo;
@@ -97,9 +99,9 @@ private Logger log = LogManager.getLogger();
 			
 			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/configure", usuario.getUSRToken());
 			
-			this.service.configureProduct(seleccion, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken(), usuario);
+			String uuid = this.service.configureProduct(seleccion, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken(), usuario);
 			
-			return ResponseEntity.status(201).build();
+			return ResponseEntity.status(201).body(uuid);
 		}
 		catch(CPException ex)
 		{
@@ -118,7 +120,9 @@ private Logger log = LogManager.getLogger();
 	}
 	
 	@RequestMapping(method = RequestMethod.GET,value = "/configure",produces = "application/json")
-	public ResponseEntity<?> getProducts(HttpServletRequest request,Authentication authentication)
+	public ResponseEntity<?> getProducts(@RequestParam(value="isEnd",required = false) final Boolean isEnd,
+										 @RequestParam(value="uuid",required = false) final String uuid,
+			HttpServletRequest request,Authentication authentication)
 	{
 		try
 		{
@@ -129,9 +133,42 @@ private Logger log = LogManager.getLogger();
 			
 			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/configure", usuario.getUSRToken());
 			
-			List<ResponseSeleccion> response = this.service.getSelecciones(usuario, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			List<ResponseSeleccion> response = this.service.getSelecciones(isEnd,uuid,usuario, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
 			return ResponseEntity.ok().body(response);
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /configure -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.DELETE,value = "/configure/{uuid}")
+	public ResponseEntity<?> delConfigureProduct(@PathVariable(value = "uuid",required = true) final String uuid,
+			HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/configure", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/configure", usuario.getUSRToken());
+			
+			this.service.delSeleccion(uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.status(204).build();
 		}
 		catch(CPException ex)
 		{

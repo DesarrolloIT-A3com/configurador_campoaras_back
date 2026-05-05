@@ -27,19 +27,27 @@ public class SeleccionDTO
 	
 	private String armazon;
 	
+	private String colorArmazon;
+	
 	private Float precioFrente;
 	
 	private String frente;
 	
 	private String acabadoFrente;
 	
+	private String colorFrente;
+	
 	private Float precioTirador;
 	
 	private String acabadoTirador;
 	
+	private String colorTirador;
+	
 	private Float precioRegleta;
 	
 	private String acabadoRegleta;
+	
+	private String colorRegleta;
 	
 	private Float precioFinal;
 	
