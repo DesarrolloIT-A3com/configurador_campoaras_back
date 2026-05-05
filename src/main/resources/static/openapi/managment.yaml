@@ -1395,4 +1395,31 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  
+  /v1/managment/export:
+    get:
+      summary: Exportar datos de configuración para Excel
+      description: Endpoint para exportar los datos de configuración en formato Excel.
+      tags:
+        - Exportación de Datos
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Datos exportados exitosamente
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+
 

@@ -44,6 +44,8 @@ springdoc:
         url: /openapi/managment.yaml
       - name: General
         url: /openapi/general.yaml
+      - name: Order
+        url: /openapi/order.yaml
        
     operationsSorter: method
     tagsSorter: alpha

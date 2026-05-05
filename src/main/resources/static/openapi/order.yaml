@@ -1,0 +1,448 @@
+openapi: 3.0.3
+
+info:
+  title: Order Controller Capoaras API
+  version: 1.0.0
+
+servers:
+  - url: http://192.168.1.169:8080/
+    description: Documentación de endpoints de desarrollo
+
+security:
+  - cookieAuth: []
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: JWT
+
+
+  # Esquemas reutilizables
+  schemas:
+    ProductoConfigurado:
+      type: object
+      required:
+        - referencia
+        - usuario
+        - precioArmazon
+        - tipoAcabadoArmazon
+        - precioFrente
+        - frente
+        - tipoAcabadoFrente
+        - precioTirador
+        - tipoAcabadoTirador
+        - precioRegleta
+        - tipoAcabadoRegleta
+        - cantidad
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del producto configurado
+          example: "123e4567-e89b-12d3-a456-426614174000"
+          nullable: true
+        referencia:
+          type: string
+          description: Referencia única del producto configurado
+          example: "2001"
+        usuario:
+          type: string
+          description: Uuid o nombre del Usuario que ha configurado el producto
+          example: "USER123"
+        precioArmazon:
+          type: number
+          format: float
+          description: Precio del armazón
+          example: 150.0
+        tipoAcabadoArmazon:
+          type: string
+          description: Tipo de acabado del armazón
+          example: "Mate"
+        precioFrente:
+          type: number
+          format: float
+          description: Precio del frente
+          example: 200.0
+        tipoAcabadoFrente:
+          type: string
+          description: Tipo de acabado del frente
+          example: "Brillante"
+        precioTirador:
+          type: number
+          format: float
+          description: Precio del tirador
+          example: 50.0
+        tipoAcabadoTirador:
+          type: string
+          description: Tipo de acabado del tirador
+          example: "Cromado"
+        precioRegleta:
+          type: number
+          format: float
+          description: Precio de la regleta
+          example: 30.0
+        tipoAcabadoRegleta:
+          type: string
+          description: Tipo de acabado de la regleta
+          example: "Madera"
+        cantidad:
+          type: integer
+          description: Cantidad de productos configurados
+          example: 10
+    
+    Pedido:
+      type: object
+      required:
+        - fecha
+        - referencia
+        - productos
+        - usuario
+      properties:
+        id:
+          type: string
+          description: UUID del pedido
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        fecha:
+          type: string
+          format: date-time
+          description: Fecha y hora del pedido
+          example: "2024-06-01T12:00:00Z"
+        referencia:
+          type: string
+          description: Referencia del pedido, lo debe de introducir el usuario
+          example: "REF-001"
+        productos:
+          type: array
+          description: Lista de productos configurados en el pedido
+          items:
+            $ref: '#/components/schemas/ProductoConfigurado'
+        usuario:
+          type: string
+          description: Uuid o nombre del Usuario que ha realizado el pedido
+          example: "USER123"
+    
+    CPException:
+      type: object
+      required:
+          - code
+          - message
+      properties:
+        code:
+          type: integer
+          description: Código de error
+          example: 403
+        message:
+          type: string
+          description: Mensaje de error
+          example: "Forbidden: Access is denied"
+        cause:
+          type: object
+          nullable: true
+          description: Detalles adicionales del error normalmente suele ser otra excepcion de Java
+          properties:
+            exception:
+              type: string
+              description: Nombre de la clase de la excepción
+              example: "java.lang.NullPointerException"
+            message:
+              type: string
+              description: Mensaje de la excepción
+              example: "Null reference encountered"
+    
+  
+  
+  
+  responses:
+    Unauthorized:
+      description: No autorizado -- Cookie JWT ausente o inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 401
+            message: "Unauthorized: JWT cookie is missing or invalid"
+    Forbidden:
+      description: Prohibido -- El usuario no tiene el rol necesario o ha realizado acciones no permitidas
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 403
+            message: "Forbidden: Access is denied"    
+    NotFound:
+      description: No encontrado -- El recurso solicitado no existe
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 404
+            message: "Not Found: The requested resource does not exist"
+    BadRequest:
+      description: Solicitud incorrecta -- El cliente ha enviado datos inválidos o mal formados
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 400
+            message: "Bad Request: The request is invalid or malformed"
+    InternalServerError:
+      description: Error interno del servidor -- Ocurrió un error inesperado en el servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 500
+            message: "Internal Server Error: An unexpected error occurred on the server"
+    ServerNotAvailable:
+      description: Servicio no disponible -- El servidor no puede manejar la solicitud en este momento
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CPException'
+          example:
+            code: 503
+            message: "Service Unavailable: The server is currently unable to handle the request"
+   
+  parameters:
+    uuidFilter:
+      name: uuid
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Filtro opcional para buscar por UUID
+      example: "123e4567-e89b-12d3-a456-426614174000"
+    isEnd:
+      name: isEnd
+      in: query
+      required: false
+      schema:
+        type: boolean
+      description: Filtro opcional para buscar por estado finalizado
+      example: true
+
+paths:
+  /v1/order/producto-configurado:
+    get:
+      summary: Obtener productos configurados
+      description: Devuelve una lista de productos configurados, con filtros opcionales por UUID y estado finalizado.
+      operationId: getSelecciones
+      tags:
+        - Order
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/uuidFilter'
+        - $ref: '#/components/parameters/isEnd'
+      responses:
+        '200':
+          description: Lista de productos configurados obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductoConfigurado'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServerNotAvailable'
+    
+  /v1/order/producto-configurado/{uuid}:
+    patch:
+      summary: Actualizar producto configurado
+      description: Actualiza un producto configurado existente utilizando su UUID.
+      operationId: updateProductoConfigurado
+      tags:
+        - Order
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID del producto configurado a actualizar
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoConfigurado'
+      responses:
+        '200':
+          description: Producto configurado actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductoConfigurado'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServerNotAvailable'
+    delete:
+      summary: Eliminar producto configurado
+      description: Elimina un producto configurado existente utilizando su UUID.
+      operationId: deleteProductoConfigurado
+      tags:
+        - Order
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID del producto configurado a eliminar
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '204':
+          description: Producto configurado eliminado exitosamente (sin contenido)
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServerNotAvailable'
+
+  /v1/order/proposal:
+    get:
+        tags:
+          - Order
+        summary: Obtención de propuestas de pedido realizadas por el usuario para su revisión
+        operationId: getOrderProposals
+        security:
+          - cookieAuth: []
+        parameters:
+          - name: uuid
+            in: query
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filtro opcional para buscar por UUID de la propuesta de pedido
+            example: "123e4567-e89b-12d3-a456-426614174000"
+        responses:
+          "200":
+            description: "Propuestas de pedido obtenidas"
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Pedido'
+          "403":
+            $ref: '#/components/responses/Forbidden'
+          "401":
+            $ref: '#/components/responses/Unauthorized'
+          "500":
+            $ref: '#/components/responses/InternalServerError'
+          "503":
+            $ref: '#/components/responses/ServerNotAvailable'
+  /v1/order/proposal/{uuid}:
+    patch:
+      tags:
+        - Order
+      summary: Actualización de una propuesta de pedido existente utilizando su UUID
+      operationId: updateOrderProposal
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID de la propuesta de pedido a actualizar
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pedido'
+      responses:
+        "200":
+          description: Propuesta de pedido actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+    delete:
+      tags:
+        - Order
+      summary: Eliminación de una propuesta de pedido existente utilizando su UUID
+      operationId: deleteOrderProposal
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID de la propuesta de pedido a eliminar
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        "204":
+          description: Propuesta de pedido eliminada exitosamente (sin contenido)
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'

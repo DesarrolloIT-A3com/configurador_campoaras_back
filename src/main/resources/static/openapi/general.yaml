@@ -136,6 +136,10 @@ components:
           type: string
           description: Armazón del producto, solo se introduce el nombre del armazón
           example: "Armazón Clásico"
+        colorArmazon:
+          type: string
+          description: Color del armazón, solo se introduce el nombre del color
+          example: "Color Rojo"
         frente:
           type: string
           description: Frente del producto, solo se introduce el nombre del frente
@@ -144,14 +148,26 @@ components:
           type: string
           description: Acabado del frente, solo se introduce el nombre del acabado
           example: "Acabado Mate"
+        colorFrente:
+          type: string
+          description: Color del frente, solo se introduce el nombre del color
+          example: "Color Azul"
         acabadoTirador:
           type: string
           description: Acabado del tirador, solo se introduce el nombre del acabado
           example: "Acabado Natural"
+        colorTirador:
+          type: string
+          description: Color del tirador, solo se introduce el nombre del color
+          example: "Color Verde"
         acabadoRegleta:
           type: string
           description: Acabado de la regleta, solo se introduce el nombre del acabado
           example: "Acabado Mate"
+        colorRegleta:
+          type: string
+          description: Color de la regleta, solo se introduce el nombre del color
+          example: "Color Rojo"
         fondo:
           type: number
           description: Fondo del producto en cm
@@ -175,6 +191,32 @@ components:
           type: boolean
           description: Indica si el producto configurado es un producto a medida (bulk) o un producto estándar
           example: false
+    
+    BulkProductosUsuario:
+      type: object
+      required:
+        - usuario
+        - productos
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del conjunto de productos a medida del usuario
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        usuarioUuid:
+          type: string
+          description: Uuid del Usuario que ha configurado los productos a medida
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        productos:
+          type: array
+          description: Lista de productos configurados a medida (bulk) asociados al usuario
+          items:
+            $ref: '#/components/schemas/ProductoConfigurado'
+        end:
+          type: boolean
+          description: Indica si el usuario ha finalizado la configuración de productos a medida (bulk) o no
+          example: true
+
     Usuario:
       type: object
       required:
@@ -268,6 +310,22 @@ components:
         type: string
       description: UUID del usuario
       example: "123e4567-e89b-12d3-a456-426614174000"
+    uuid:
+      name: uuid
+      in: path
+      required: true
+      schema:
+        type: string
+      description: UUID del recurso
+      example: "123e4567-e89b-12d3-a456-426614174000"
+    isEnd:
+      name: isEnd
+      in: query
+      required: false
+      schema:
+        type: boolean
+      description: Indica si se deben incluir solo los recursos que han finalizado su proceso o no
+      example: true
   
   responses:
     Unauthorized:
@@ -412,7 +470,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ProductoConfigurado'
+                  $ref: '#/components/schemas/BulkProductosUsuario'
         "403":
           $ref: '#/components/responses/Forbidden'
         "401":
@@ -449,6 +507,30 @@ paths:
         "503":
           $ref: '#/components/responses/ServerNotAvailable'
   
+  /v1/configure/{uuid}:
+    delete:
+      tags: 
+        - Product
+      summary: Eliminación de un producto configurado a través de su uuid
+      operationId: deleteConfigProduct
+      security:
+        - cookieAuth: [] 
+      parameters:
+        - $ref: '#/components/parameters/uuid'
+      responses:
+        "204":
+          description: "Producto configurado eliminado"
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "500":
+          $ref: '#/components/responses/InternalServerError'
+        "503":
+          $ref: '#/components/responses/ServerNotAvailable'
+
   /v1/order-proposal:
     post:
       tags: 
