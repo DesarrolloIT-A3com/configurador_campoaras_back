@@ -1,31 +1,33 @@
 package es.aag.configurador.campoaras.services;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import es.aag.configurador.campoaras.dto.OrderDTO;
 import es.aag.configurador.campoaras.dto.ResponseSeleccion;
 import es.aag.configurador.campoaras.dto.SeleccionDTO;
-import es.aag.configurador.campoaras.entities.Acabado;
 import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
-import es.aag.configurador.campoaras.entities.Configuracion;
+import es.aag.configurador.campoaras.entities.Pedido;
 import es.aag.configurador.campoaras.entities.ProductoConfigurado;
 import es.aag.configurador.campoaras.entities.Usuario;
-import es.aag.configurador.campoaras.repositories.IAcabadoRepository;
 import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
-import es.aag.configurador.campoaras.repositories.IColorRepository;
+import es.aag.configurador.campoaras.repositories.IPedidoRepository;
 import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
+import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
-import es.aag.configurador.campoaras.utils.Validations;
+import es.aag.configurador.campoaras.utils.EstadoPedido;
 
 @Service
 public class OrderService 
@@ -39,23 +41,14 @@ public class OrderService
 	private IUsuarioRepository userRepo;
 	
 	@Autowired
-	private IAcabadoRepository acabadoRepo;
-	
-	@Autowired
-	private IColorRepository colorRepo;
-	
-	@Autowired
 	private IProductoConfiguradoRepository seleccionRepo;
 	
 	@Autowired
 	private IBulkProductosUsuarioRepository bulkRepo;
 	
-	private final Validations validation;
+	@Autowired
+	private IPedidoRepository pedidoRepo;
 	
-	public OrderService()
-	{
-		this.validation = new Validations();
-	}
 	
 	public List<ResponseSeleccion> getSelecciones(Boolean isEnd,String userUuid,String rol,String seguridad,String usrToken)
 	{
@@ -199,7 +192,14 @@ public class OrderService
 				List<String> productos = bulk.getProductos();
 				productos.remove(index);
 				bulk.setProductos(productos);
-				this.bulkRepo.save(bulk);
+				if(bulk.getProductos().isEmpty())
+				{
+					this.bulkRepo.delete(bulk);
+				}
+				else
+				{
+					this.bulkRepo.save(bulk);
+				}
 				this.bulkRepo.flush();
 				break;
 			}
@@ -207,5 +207,209 @@ public class OrderService
 		
 		
 	}
- 	
+	
+	public void postOrder(OrderDTO body,String rol,String seguridad,String usrToken) throws CPException
+	{
+		Optional<Usuario> optUser = this.userRepo.findById(body.getUsuario());
+
+		if(!optUser.isPresent())
+		{
+			log.warn("[AVISO] -- /order-proposal -- {} Ha intentado tramitar un pedido introduciendo un uuid de usuario erroneo con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Datos inexistentes");
+		}
+		
+		Usuario usuario = optUser.get();
+		
+		if(body.getReferencia()==null || body.getProductos()==null)
+		{
+			log.warn("[AVISO] -- /order-proposal -- {} Ha intentado tramitar un pedido con datos nulos con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos inválidos");
+		}
+		
+		if(!body.getReferencia().isBlank() && body.getProductos().length==0)
+		{
+			log.warn("[AVISO] -- /order-proposal -- {} Ha intentado tramitar un pedido con datos vacios con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos inválidos");
+		}
+		
+		Pedido pedido = new Pedido();
+		List<String> productoList = new LinkedList<String>();
+		
+		for(String producto:body.getProductos())
+		{
+			Optional<ProductoConfigurado> optSeleccion = this.seleccionRepo.findById(producto);
+			
+			if(!optSeleccion.isPresent())
+			{
+				log.warn("[AVISO] -- /order-proposal -- {} Ha intentado tramitar un pedido introduciendo un uuid de seleccion erroneo con permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(404,"Datos inexistentes");
+			}
+					
+			if(!usuario.getUuid().equals(body.getUsuario()))
+			{
+				log.warn("[AVISO] -- /order-proposal -- {} Ha intentado tramitar un pedido usando un uuid de usuario diferente al suyo con permiso de {} -- {}",usrToken,rol,seguridad);
+				throw new CPException(400,"Datos inválidos");
+			}
+			
+			productoList.add(producto);
+		}
+		
+		String uuid = UUID.randomUUID().toString();
+		
+		pedido.setUuid(uuid);
+		pedido.setProductos(productoList);
+		pedido.setReferencia(this.encryptor.encrypt(body.getReferencia()));
+		pedido.setUsuarioPedido(usuario);
+		pedido.setEstado(EstadoPedido.NO_ENVIADO);
+		
+		log.info("[ACCION] -- /order-proposal -- {} Ha tramitado un pedido con permiso de {} -- {}",usrToken,rol,seguridad);
+		
+		this.pedidoRepo.save(pedido);
+		this.pedidoRepo.flush();
+		usuario.addPedidos(pedido);
+		this.userRepo.save(usuario);
+		this.userRepo.flush();
+	}
+	
+	public List<OrderDTO> getPedidos(Usuario usuario,String rol,String seguridad,String usrToken)
+	{
+		List<OrderDTO> response = new LinkedList<OrderDTO>();
+		
+		for(Pedido pedido:usuario.getPedidos())
+		{
+			String uuid = pedido.getUuid();
+			String referencia = this.encryptor.decrypt(pedido.getReferencia());
+			EstadoPedido estado = pedido.getEstado();
+			List<SeleccionDTO> selecciones = new LinkedList<SeleccionDTO>();
+			
+			for(String producto:pedido.getProductos())
+			{
+				Optional<ProductoConfigurado> optSeleccion = this.seleccionRepo.findById(producto);
+				
+				if(optSeleccion.isPresent())
+				{
+					ProductoConfigurado seleccion = optSeleccion.get();
+					String uuidSel = seleccion.getUuid();
+					String referenciaSel = this.encryptor.decrypt(seleccion.getFrente().getReferencia())+" "+seleccion.getConfiguracion().getReferencia();					
+					String armazon = this.encryptor.decrypt(seleccion.getAcabado().getNombre());
+					String colorArmazon = this.encryptor.decrypt(seleccion.getColorArmazon().getNombre());
+					String frente = this.encryptor.decrypt(seleccion.getFrente().getNombre());
+					String acabadoFrente = this.encryptor.decrypt(seleccion.getAcabadoFrente().getNombre());
+					String colorFrente = this.encryptor.decrypt(seleccion.getColorFrente().getNombre());
+					String acabadoRegleta = null;
+					String acabadoTirador = null;
+					String colorRegleta = null;
+					String colorTirador = null;
+					
+					if(seleccion.getAcabadoRegleta()!=null)
+					{
+						acabadoRegleta = this.encryptor.decrypt(seleccion.getAcabadoRegleta().getNombre());
+						colorRegleta = this.encryptor.decrypt(seleccion.getColorRegleta().getNombre());
+					}
+					
+					if(seleccion.getAcabadoTirador()!=null)
+					{
+						acabadoTirador = this.encryptor.decrypt(seleccion.getAcabadoTirador().getNombre());
+						colorTirador = this.encryptor.decrypt(seleccion.getColorTirador().getNombre());
+					}
+					
+					// En caso de que no se hayan seleccionado medidas especiales se cogen las medidas base
+					float fondo = seleccion.getFondo()!=null ? seleccion.getFondo() : seleccion.getConfiguracion().getFondo();
+					float ancho = seleccion.getAncho()!=null ? seleccion.getAncho() : seleccion.getConfiguracion().getAncho();
+					float alto = seleccion.getAlto()!=null ? seleccion.getAlto() : seleccion.getConfiguracion().getAlto();
+					
+					// Conversión a milimetros
+					fondo = fondo * 10;
+					ancho = ancho * 10;
+					alto = alto * 10;
+					
+					float precioFinal = seleccion.getPrecioFinal();
+					int cantidad = seleccion.getCantidad();
+					
+					String serie = this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getProducto().getNombre()) +" "+this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getVariante());					
+					SeleccionDTO dto = new SeleccionDTO(uuidSel,referenciaSel,this.encryptor.decrypt(usuario.getUsername()),serie,fondo,ancho,alto,null,armazon,colorArmazon,null,frente,acabadoFrente,
+							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,precioFinal,cantidad,null);
+					
+					selecciones.add(dto);
+				}
+			}
+			response.add(new OrderDTO(uuid,referencia,this.encryptor.decrypt(usuario.getUsername()),null,estado, selecciones));
+//			response.add(new OrderDTO(uuid,referencia,this.encryptor.decrypt(usuario.getUsername()),pedido.getFecha(),null,estado, selecciones));
+			
+		}
+		
+		return response;
+	}
+	
+	public void deletePedido(String uuid,String rol,String seguridad,String usrToken) throws CPException
+	{
+		Optional<Pedido> pedidoOpt = this.pedidoRepo.findById(uuid);
+		
+		if(!pedidoOpt.isPresent())
+		{
+			log.warn("[AVISO] -- /orders -- {} Ha intentado borrar un pedido insxistente con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Datos inexistentes");
+		}
+		
+		Pedido pedido = pedidoOpt.get();
+		
+		log.info("[ADMIN] -- /orders -- {} Ha borrado el pedido {} de la base de datos con permiso de {} -- {}",usrToken,pedido.getUuid(),rol,seguridad);
+		
+		this.pedidoRepo.delete(pedido);
+		this.pedidoRepo.flush();
+		
+		Usuario userPedido = pedido.getUsuarioPedido();
+		
+		userPedido.removePedidos(pedido);
+		
+		this.userRepo.save(userPedido);
+		this.userRepo.flush();;
+	}
+	
+	public void actualizarEstado(EstadoPedido estado,String uuid,String rol,String seguridad,String usrToken) throws CPException
+	{
+		if(!rol.equals(CPConstants.ADMIN_ROLE) && rol.equals(CPConstants.SUPADMIN_ROLE))
+		{
+			if(!estado.equals(EstadoPedido.ENVIADO))
+			{
+				log.warn("[AVISO] -- /orders -- {} Ha intentado actualizar el estado de un pedido al valor {} el cual no está permitido con permiso de {} -- {}",usrToken,estado,rol,seguridad);
+				throw new CPException(400,"Datos invalidos");
+			}
+		}
+		else
+		{
+			EstadoPedido [] estados = {EstadoPedido.NO_ENVIADO,EstadoPedido.ENVIADO,EstadoPedido.ACEPTADO,EstadoPedido.RECHAZADO};
+			
+			if(Arrays.binarySearch(estados, estado)==-1)
+			{
+				log.warn("[AVISO] -- /orders -- {} Ha intentado actualizar el estado de un pedido al valor {} el cual no es válido con permiso de {} -- {}",usrToken,estado,rol,seguridad);
+				throw new CPException(400,"Datos invalidos");
+			}
+		}
+		
+		Optional<Pedido> pedidoOpt = this.pedidoRepo.findById(uuid);
+		
+		if(!pedidoOpt.isPresent())
+		{
+			log.warn("[AVISO] -- /orders -- {} Ha intentado actualizar el estado de un pedido inexistente con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Datos inexistentes");
+		}
+		
+		Pedido pedido = pedidoOpt.get();
+		
+		pedido.setEstado(estado);
+		
+		log.info("[ACCION] -- /orders -- {} Ha actualizado el estado del pedido {} a {} con permiso de {} -- {}",usrToken,pedido.getUuid(),estado,rol,seguridad);
+		
+		this.pedidoRepo.save(pedido);
+		this.pedidoRepo.flush();
+		
+		Usuario userPedido = pedido.getUsuarioPedido();
+		userPedido.removePedidos(pedido);
+		userPedido.addPedidos(pedido);
+		
+		this.userRepo.save(userPedido);
+		this.userRepo.flush();
+	}
+	
 }

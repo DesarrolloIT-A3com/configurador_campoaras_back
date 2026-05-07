@@ -1,7 +1,10 @@
 package es.aag.configurador.campoaras.rest;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import es.aag.configurador.campoaras.dto.OrderDTO;
 import es.aag.configurador.campoaras.dto.ResponseAcabado;
 import es.aag.configurador.campoaras.dto.ResponseColor;
 import es.aag.configurador.campoaras.dto.ResponseConfiguracion;
@@ -35,8 +39,10 @@ import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.security.GeneralSecurity;
 import es.aag.configurador.campoaras.services.ConfigurationService;
 import es.aag.configurador.campoaras.services.ManagmentService;
+import es.aag.configurador.campoaras.services.OrderService;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
+import es.aag.configurador.campoaras.utils.EstadoPedido;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
@@ -61,6 +67,9 @@ public class ManagmentRestController
 	
 	@Autowired
 	private ConfigurationService configService;
+	
+	@Autowired
+	private OrderService orderService;
 	
 	private final GeneralSecurity security;
 	
@@ -975,6 +984,114 @@ public class ManagmentRestController
 		}
 		
 	}
+	
+	@RequestMapping(method = RequestMethod.GET,value = "/orders",produces="application/json")
+	public ResponseEntity<?> getPedidos(@RequestParam(value="uuid",required=true)final String uuid,
+										HttpServletRequest request, Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/orders", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/orders", usuario.getUSRToken());
+			
+			Optional<Usuario> userOpt = this.userRepo.findById(uuid);
+		
+			if(!userOpt.isPresent())
+			{
+				log.warn("[AVISO] -- /orders -- {} Ha intentado obtener los pedidos de otro usuario usando un uuid erroneo con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+				throw new CPException(404,"Datos inexistentes");
+			}
+			
+			Usuario usuarioPedido = userOpt.get();
+			
+			List<OrderDTO> response = this.orderService.getPedidos(usuarioPedido, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.ok().body(response);
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /orders -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.DELETE,value="/orders/{orderId}")
+	public ResponseEntity<?> deletePedido(@PathVariable(value="orderId",required=true)final String uuid,
+			HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/orders", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/orders", usuario.getUSRToken());
+			
+			this.orderService.deletePedido(uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.status(204).build();
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /orders -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.PATCH,value = "/orders/{orderId}",consumes="application/json")
+	public ResponseEntity<?> actualizarEstado(@PathVariable(value="orderId",required=true)final String uuid,
+											  @RequestBody(required=true)OrderDTO body,
+											  HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/orders", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/orders", usuario.getUSRToken());
+			
+			this.orderService.actualizarEstado(body.getEstado(), uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.status(201).build();
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /orders -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
+	
 
 }
 

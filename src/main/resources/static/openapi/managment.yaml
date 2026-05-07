@@ -372,7 +372,45 @@ components:
           type: integer
           description: Cantidad de productos configurados
           example: 10
-  
+
+    Pedido:
+      type: object
+      required:
+        - fecha
+        - referencia
+        - productos
+        - usuario
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador único del pedido
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        fecha:
+          type: string
+          format: date-time
+          description: Fecha y hora del pedido
+          example: "2024-06-01T12:00:00Z"
+        referencia:
+          type: string
+          description: Referencia del pedido, lo debe de introducir el usuario
+          example: "REF-001"
+        estado:
+          type: string
+          enum: [NO_ENVIADO,ENVIADO,ACEPTADO,RECHAZADO]
+          description: Estado del pedido
+          example: ENVIADO
+    
+        productos:
+          type: array
+          description: Lista de productos configurados en el pedido
+          items:
+            $ref: '#/components/schemas/ProductoConfigurado'
+        usuario:
+          type: string
+          description: Uuid o nombre del Usuario que ha realizado el pedido
+          example: "USER123"
+          
   responses:
     Unauthorized:
       description: No autorizado -- Cookie JWT ausente o inválida
@@ -1420,6 +1458,95 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
-
+  /v1/managment/orders:
+    get:
+      summary: Listar pedidos
+      description: Endpoint para obtener la lista de pedidos de los usuarios.
+      tags:
+        - Pedidos
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/uuidFilter'
+      responses:
+        '200':
+          description: Lista de pedidos obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pedido'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  
+  /v1/managment/orders/{orderId}:
+    patch:
+      summary: Actualizar estado de un pedido
+      description: Endpoint para actualizar el estado de un pedido.
+      tags:
+        - Pedidos
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: UUID del pedido a actualizar
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [NO_ENVIADO,ENVIADO,ACEPTADO,RECHAZADO]
+                  description: Nuevo estado del pedido
+      responses:
+        '200':
+          description: Estado del pedido actualizado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Eliminar un pedido
+      description: Endpoint para eliminar un pedido del sistema.
+      tags:
+        - Pedidos
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: UUID del pedido a eliminar
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '204':
+          description: Pedido eliminado exitosamente
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
 

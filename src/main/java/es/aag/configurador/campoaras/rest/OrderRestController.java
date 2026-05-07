@@ -91,7 +91,7 @@ public class OrderRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/producto-configurado", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/producto-configurado", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/producto-configurado", usuario.getUSRToken());
 			
 			this.service.deleteSeleccion(uuid, usuario.getRol().getNombre(), seguridad, seguridad);
 			

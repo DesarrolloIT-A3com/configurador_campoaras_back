@@ -64,6 +64,9 @@ public class Usuario
 	@OneToMany(mappedBy = "usuarioUuid")
 	private Set<BulkProductosUsuario> selecciones = new HashSet<BulkProductosUsuario>();
 	
+	@OneToMany(mappedBy = "usuarioPedido")
+	private Set<Pedido> pedidos = new HashSet<Pedido>();
+	
 	public void addProducto(ProductoConfigurado producto)
 	{
 		this.productos.add(producto);
@@ -82,6 +85,16 @@ public class Usuario
 	public void removeBulk(BulkProductosUsuario bulk)
 	{
 		this.selecciones.remove(bulk);
+	}
+	
+	public void addPedidos(Pedido pedido)
+	{
+		this.pedidos.add(pedido);
+	}
+	
+	public void removePedidos(Pedido pedido)
+	{
+		this.pedidos.remove(pedido);
 	}
 	
 }

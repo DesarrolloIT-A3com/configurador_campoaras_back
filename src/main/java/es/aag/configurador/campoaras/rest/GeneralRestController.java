@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import es.aag.configurador.campoaras.dto.OrderDTO;
 import es.aag.configurador.campoaras.dto.ResponseSeleccion;
 import es.aag.configurador.campoaras.dto.SeleccionDTO;
 import es.aag.configurador.campoaras.dto.UserGetDTO;
@@ -23,6 +24,7 @@ import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.security.GeneralSecurity;
 import es.aag.configurador.campoaras.services.ConfigurationService;
 import es.aag.configurador.campoaras.services.EncryptorService;
+import es.aag.configurador.campoaras.services.OrderService;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,6 +43,9 @@ public class GeneralRestController
 	
 	@Autowired
 	private ConfigurationService service;
+	
+	@Autowired
+	private OrderService orderService;
 	
 	@Autowired
 	private EncryptorService encryptor;
@@ -184,5 +189,71 @@ public class GeneralRestController
 			return ResponseEntity.status(500).body("Error interno de servidor");		
 
 		}
+	}
+	
+	@RequestMapping(method = RequestMethod.POST,value="/order-proposal",consumes="application/json")
+	public ResponseEntity<?> postOrder(@RequestBody(required = true)final OrderDTO order,
+			HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/order-proposal", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/order-proposal", usuario.getUSRToken());
+			
+			this.orderService.postOrder(order, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.status(201).build();
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /order-proposal -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.GET,value = "/order-proposal",produces="application/json")
+	public ResponseEntity<?> getOrder(HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/order-proposal", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/order-proposal", usuario.getUSRToken());
+			
+			List<OrderDTO> response =  this.orderService.getPedidos(usuario, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.ok().body(response);
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /order-proposal -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+
+		}
+		
 	}
 }
