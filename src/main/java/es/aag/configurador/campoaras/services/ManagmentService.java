@@ -157,7 +157,7 @@ public class ManagmentService
 					response.add(new ResponseProducto(uuidProducto,nombre,tipo,cajon,imgB64));
 				}
 				
-				log.info("[ADMIN] -- /products -- {} Ha solicitado un listado de productos con permiso de {} -- {}",usrToken,rol,seguridad);		
+				log.info("[ACCION] -- /products -- {} Ha solicitado un listado de productos con permiso de {} -- {}",usrToken,rol,seguridad);		
 				break;
 			}
 			case CPConstants.PATCH:
@@ -312,7 +312,7 @@ public class ManagmentService
 					
 				}
 				
-				log.info("[ADMIN] -- /series -- {} Ha solicitado un listado de series con permiso de {} -- {}",usrToken,rol,seguridad);
+				log.info("[ACCION] -- /series -- {} Ha solicitado un listado de series con permiso de {} -- {}",usrToken,rol,seguridad);
 				break;
 			}
 			case CPConstants.PATCH:
@@ -520,7 +520,7 @@ public class ManagmentService
 					response.add(new ResponseAcabado(acabado.getUuid(),nombre,tiposEncrypt,colores,imgByte));
 				}
 				
-				log.info("[ADMIN] -- /acabados -- {} Ha solicitado un listado de acabados con permiso de {} -- {}",usrToken,rol,seguridad);		
+				log.info("[ACCION] -- /acabados -- {} Ha solicitado un listado de acabados con permiso de {} -- {}",usrToken,rol,seguridad);		
 				
 				break;
 			}
@@ -736,7 +736,7 @@ public class ManagmentService
 					filter = false;
 				}
 				
-				log.info("[ADMIN] -- /colores -- {} Ha solicitado un listado de colores con permiso de {} -- {}",usrToken,rol,seguridad);		
+				log.info("[ACCION] -- /colores -- {} Ha solicitado un listado de colores con permiso de {} -- {}",usrToken,rol,seguridad);		
 				break;
 			}
 			case CPConstants.PATCH:
@@ -1045,7 +1045,7 @@ public class ManagmentService
 					
 				}
 				
-				log.info("[ADMIN] -- /frentes -- {} Ha solicitado un listado de frentes con permiso de {} -- {}",usrToken,rol,seguridad);		
+				log.info("[ACCION] -- /frentes -- {} Ha solicitado un listado de frentes con permiso de {} -- {}",usrToken,rol,seguridad);		
 				break;
 			}
 			case CPConstants.PATCH:
@@ -1985,7 +1985,10 @@ public class ManagmentService
 		
 		try
 		{
-			imgB64 = resource.getContentAsByteArray();
+			if(resource!=null)
+			{
+				imgB64 = resource.getContentAsByteArray();
+			}
 		}
 		catch(IOException ex)
 		{

@@ -155,7 +155,7 @@ public class Validations
 	{
 		boolean validate = true;
 		
-		validate = configuracion.getFondo() > 0 && configuracion.getAncho() > 0 && configuracion.getAlto() > 0;
+		validate = configuracion.getFondo() >= 0 && configuracion.getAncho() >= 0 && configuracion.getAlto() >= 0;
 		
 		if(validate)
 		{

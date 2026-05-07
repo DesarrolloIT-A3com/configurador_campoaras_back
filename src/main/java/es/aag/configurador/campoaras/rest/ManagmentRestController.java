@@ -812,7 +812,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/configuracion", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/configuracion", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/configuracion", usuario.getUSRToken());
 			
 			List<ResponseConfiguracion> config = this.configService.manageConfiguracion(null, null,uuid, CPConstants.GET, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			

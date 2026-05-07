@@ -98,12 +98,6 @@ private Logger log = LogManager.getLogger();
 		
 		List<ResponseConfiguracion> response = null;
 		
-		if(!rol.equals(CPConstants.SUPADMIN_ROLE) &&  !rol.equals(CPConstants.ADMIN_ROLE))
-		{
-			log.warn("[AVISO] -- /configuracion -- {} Ha intentado acceder a la gestión de configuraciones con un permiso de {} -- {}",usrToken,rol,seguridad);
-			throw new CPException(403,"No tienes permiso");
-		}
-		
 		switch(method)
 		{
 			case CPConstants.POST:
@@ -216,7 +210,7 @@ private Logger log = LogManager.getLogger();
 					response.add(configDTO);
 				}
 				
-				log.info("[ADMIN] -- /configuracion -- {} Ha solicitado un listado de configuraciones con permiso de {} -- {}",usrToken,rol,seguridad);
+				log.info("[ACCION] -- /configuracion -- {} Ha solicitado un listado de configuraciones con permiso de {} -- {}",usrToken,rol,seguridad);
 				break;
 			}
 			case CPConstants.PATCH:
@@ -339,7 +333,7 @@ private Logger log = LogManager.getLogger();
 		
 		String referencia = "";
 		
-		if(body.getAncho()!=null || body.getFondo()!=null)
+		if(body.getReferencia()==null && (body.getAncho()!=null || body.getFondo()!=null))
 		{
 			referencia = this.chooseReferencia(body.getSerie(), body.getAncho(),body.getFondo());
 		}
