@@ -101,9 +101,17 @@ public class OrderService
 					String referencia = item.getConfiguracion().getReferencia();
 					String armazon = this.encryptor.decrypt(item.getAcabado().getNombre());
 					String colorArmazon = this.encryptor.decrypt(item.getColorArmazon().getNombre());
-					String acabadoFrente = this.encryptor.decrypt(item.getAcabadoFrente().getNombre());
-					String colorFrente = this.encryptor.decrypt(item.getColorFrente().getNombre());
-					String frente = this.encryptor.decrypt(item.getFrente().getNombre());
+					
+					String acabadoFrente = "-";
+					String colorFrente = "-";
+					String frente = "-";
+					if(item.getFrente()!=null)
+					{
+						acabadoFrente = this.encryptor.decrypt(item.getAcabadoFrente().getNombre());
+						colorFrente = this.encryptor.decrypt(item.getColorFrente().getNombre());
+						frente = this.encryptor.decrypt(item.getFrente().getNombre());
+					}
+					
 					String acabadoTirador = null;
 					String acabadoRegleta = null;
 					String colorTirador = null;
@@ -163,6 +171,8 @@ public class OrderService
 			
 			response.add(seleccion);
 		}
+		
+		log.info("[ACCION] -- /producto-configurado -- {} Ha solicitado un listado de selecciones con un permiso de {} -- {}",usrToken,rol,seguridad);
 		
 		return response;
 	}
@@ -244,12 +254,6 @@ public class OrderService
 				log.warn("[AVISO] -- /order-proposal -- {} Ha intentado tramitar un pedido introduciendo un uuid de seleccion erroneo con permiso de {} -- {}",usrToken,rol,seguridad);
 				throw new CPException(404,"Datos inexistentes");
 			}
-					
-			if(!usuario.getUuid().equals(body.getUsuario()))
-			{
-				log.warn("[AVISO] -- /order-proposal -- {} Ha intentado tramitar un pedido usando un uuid de usuario diferente al suyo con permiso de {} -- {}",usrToken,rol,seguridad);
-				throw new CPException(400,"Datos inválidos");
-			}
 			
 			productoList.add(producto);
 		}
@@ -260,6 +264,7 @@ public class OrderService
 		pedido.setProductos(productoList);
 		pedido.setReferencia(this.encryptor.encrypt(body.getReferencia()));
 		pedido.setUsuarioPedido(usuario);
+		pedido.setFecha(LocalDateTime.now());
 		pedido.setEstado(EstadoPedido.NO_ENVIADO);
 		
 		log.info("[ACCION] -- /order-proposal -- {} Ha tramitado un pedido con permiso de {} -- {}",usrToken,rol,seguridad);
@@ -290,12 +295,25 @@ public class OrderService
 				{
 					ProductoConfigurado seleccion = optSeleccion.get();
 					String uuidSel = seleccion.getUuid();
-					String referenciaSel = this.encryptor.decrypt(seleccion.getFrente().getReferencia())+" "+seleccion.getConfiguracion().getReferencia();					
+					String referenciaSel = seleccion.getConfiguracion().getReferencia();		
+					if(seleccion.getFrente()!=null)
+					{
+						referenciaSel = this.encryptor.decrypt(seleccion.getFrente().getReferencia()) +" "+referenciaSel;
+					}
 					String armazon = this.encryptor.decrypt(seleccion.getAcabado().getNombre());
 					String colorArmazon = this.encryptor.decrypt(seleccion.getColorArmazon().getNombre());
-					String frente = this.encryptor.decrypt(seleccion.getFrente().getNombre());
-					String acabadoFrente = this.encryptor.decrypt(seleccion.getAcabadoFrente().getNombre());
-					String colorFrente = this.encryptor.decrypt(seleccion.getColorFrente().getNombre());
+					
+					String frente = "-";
+					String acabadoFrente = "-";
+					String colorFrente = "-";
+					
+					if(seleccion.getFrente()!=null)
+					{
+						frente = this.encryptor.decrypt(seleccion.getFrente().getNombre());
+						acabadoFrente = this.encryptor.decrypt(seleccion.getAcabadoFrente().getNombre());
+						colorFrente = this.encryptor.decrypt(seleccion.getColorFrente().getNombre());
+					}
+					
 					String acabadoRegleta = null;
 					String acabadoTirador = null;
 					String colorRegleta = null;
@@ -333,10 +351,11 @@ public class OrderService
 					selecciones.add(dto);
 				}
 			}
-			response.add(new OrderDTO(uuid,referencia,this.encryptor.decrypt(usuario.getUsername()),null,estado, selecciones));
-//			response.add(new OrderDTO(uuid,referencia,this.encryptor.decrypt(usuario.getUsername()),pedido.getFecha(),null,estado, selecciones));
+			response.add(new OrderDTO(uuid,referencia,this.encryptor.decrypt(usuario.getUsername()),pedido.getFecha(),null,estado, selecciones));
 			
 		}
+		
+		log.info("[ACCION] -- /order-proposal -- {} Ha solicitado un listado de pedidos con un permiso de {} -- {}",usrToken,rol,seguridad);
 		
 		return response;
 	}

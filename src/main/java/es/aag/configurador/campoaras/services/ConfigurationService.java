@@ -23,6 +23,7 @@ import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
 import es.aag.configurador.campoaras.entities.Color;
 import es.aag.configurador.campoaras.entities.Configuracion;
 import es.aag.configurador.campoaras.entities.Frente;
+import es.aag.configurador.campoaras.entities.Producto;
 import es.aag.configurador.campoaras.entities.ProductoConfigurado;
 import es.aag.configurador.campoaras.entities.Serie;
 import es.aag.configurador.campoaras.entities.Usuario;
@@ -391,9 +392,10 @@ private Logger log = LogManager.getLogger();
 			throw new CPException(404,"Se ha seleccionado un color de armazon erroneo");
 		}
 		
+		Producto producto = config.getSerie().getProducto();
 		Frente frente = this.validation.findFrentes(body.getFrente());
 		
-		if(frente == null)
+		if(frente == null && producto.getFrentesProductos().size()>0)
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un frente erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
 			throw new CPException(404,"Se ha seleccionado un frente erroneo para el armazon dado");
@@ -401,7 +403,7 @@ private Logger log = LogManager.getLogger();
 			
 		Acabado acabadoFrente = this.validation.findAcabado(body.getAcabadoFrente());
 		
-		if(acabadoFrente == null)
+		if(acabadoFrente == null && producto.getFrentesProductos().size()>0)
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un armazon de frente erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
 			throw new CPException(404,"Se ha seleccionado un acabado erroneo para el frente dado");
@@ -409,7 +411,7 @@ private Logger log = LogManager.getLogger();
 		
 		Color colorFrente = this.validation.findColor(body.getColorFrente());
 		
-		if(colorFrente==null)
+		if(colorFrente==null && producto.getFrentesProductos().size()>0)
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de frente erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
 			throw new CPException(404,"Se ha seleccionado un color de frente erroneo");
@@ -461,88 +463,99 @@ private Logger log = LogManager.getLogger();
 		
 		if(precioArmazon==-1)
 		{
-			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un armazón erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+			log.warn("[AVISO] -- /configure -- {} Ha configurado un producto con un armazón erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
 			throw new CPException(400,"El armazon seleccionado no existe dentro de la configuracion dada");
 		}
 		
 		if(!armazon.getColores().contains(colorArmazon))
 		{
-			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el armazón dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+			log.warn("[AVISO] -- /configure -- {} Ha configurado un producto con un color que no existe en el armazón dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
 			throw new CPException(400,"El color del armazon dado no se encuentra en la configuración dada");
 		}
 		
-		if(!config.getSerie().getProducto().getFrentesProductos().contains(frente))
+		if(!config.getSerie().getProducto().getFrentesProductos().contains(frente) && producto.getFrentesProductos().size()>0)
 		{
-			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un frente erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+			log.warn("[AVISO] -- /configure -- {} Ha configurado un producto con un frente erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
 			throw new CPException(400,"El frente seleccionado no se encuentra en el producto configurado");
 		}
 				
-		float precioFrente = this.validateAcabado(acabadoConfig, body.getAcabadoFrente());
-		
-		if(precioFrente==-1)
-		{
-			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un armazón de frente inexistente en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-			throw new CPException(400,"El acabado del frente ni existe dentro de la configuracion dada");
-		}
-		
-		if(!acabadoFrente.getColores().contains(colorFrente))
-		{
-			log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el frente dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-			throw new CPException(400,"El color del frente dado no se encuentra en la configuración dada");
-		}
-		
+		float precioFrente = 0;
 		float precioTirador = 0;
-		
-		if(acabadoTirador != null)
-		{
-			precioTirador = this.validateAcabado(acabadoConfig, body.getAcabadoTirador());
-			if(precioTirador == -1)
-			{
-				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un acabado de tirador erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-				throw new CPException(400,"Datos inválidos");
-			}
-			
-			if(!acabadoTirador.getColores().contains(colorTirador))
-			{
-				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el tirador dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-				throw new CPException(400,"El color del tirador dado no se encuentra en la configuración dada");
-			}
-			
-			precioTirador = 0;
-		}
-		
 		float precioRegleta = 0;
-		
-		if(acabadoRegleta != null)
+				
+		if(producto.getFrentesProductos().size()>0)
 		{
-			precioRegleta = this.validateAcabado(acabadoConfig, body.getAcabadoRegleta());
-			if(precioRegleta == -1)
+			this.validateAcabado(acabadoConfig, body.getAcabadoFrente());
+			
+			if(precioFrente==-1)
 			{
-				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un acabado de regleta erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-				throw new CPException(400,"Datos inválidos");
+				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un armazón de frente inexistente en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+				throw new CPException(400,"El acabado del frente ni existe dentro de la configuracion dada");
 			}
 			
-			if(!acabadoRegleta.getColores().contains(colorRegleta))
+			if(!acabadoFrente.getColores().contains(colorFrente))
 			{
-				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el tirador dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-				throw new CPException(400,"El color de la regleta dada no se encuentra en la configuración dada");
+				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el frente dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+				throw new CPException(400,"El color del frente dado no se encuentra en la configuración dada");
 			}
-			precioRegleta = 0;
+						
+			if(acabadoTirador != null)
+			{
+				precioTirador = this.validateAcabado(acabadoConfig, body.getAcabadoTirador());
+				if(precioTirador == -1)
+				{
+					log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un acabado de tirador erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+					throw new CPException(400,"Datos inválidos");
+				}
+				
+				if(!acabadoTirador.getColores().contains(colorTirador))
+				{
+					log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el tirador dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+					throw new CPException(400,"El color del tirador dado no se encuentra en la configuración dada");
+				}
+				
+				precioTirador = 0;
+			}
+						
+			if(acabadoRegleta != null)
+			{
+				precioRegleta = this.validateAcabado(acabadoConfig, body.getAcabadoRegleta());
+				if(precioRegleta == -1)
+				{
+					log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un acabado de regleta erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+					throw new CPException(400,"Datos inválidos");
+				}
+				
+				if(!acabadoRegleta.getColores().contains(colorRegleta))
+				{
+					log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el tirador dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+					throw new CPException(400,"El color de la regleta dada no se encuentra en la configuración dada");
+				}
+				precioRegleta = 0;
+			}
 		}
 		
 		float precioFinal = 0;
 		
 		// Si hay acabados especiales, en vez de elegir el precio más alto se suman
-		if(this.isEspecial(armazon.getTipos()) || this.isEspecial(acabadoFrente.getTipos()))
+		try
 		{
-			precioFinal += precioArmazon + precioFrente;
+			if(this.isEspecial(armazon.getTipos()) || this.isEspecial(acabadoFrente.getTipos()))
+			{
+				precioFinal += precioArmazon + precioFrente;
+			}
+			else
+			{
+				// Ternario para definir el precio más alto del armazon o el acabado del frente
+				precioFinal = precioArmazon > precioFrente ? precioArmazon : precioFrente;
+			}
 		}
-		else
+		catch(NullPointerException ex)
 		{
-			// Ternario para definir el precio más alto del armazon o el acabado del frente
+			// En caso de que no haya frente acabadoFrente.getTipos() es nulo, por lo que se coge el precio más alto
 			precioFinal = precioArmazon > precioFrente ? precioArmazon : precioFrente;
 		}
-			
+		
 		precioFinal = (precioFinal * body.getCantidad());
 		
 		float fondo = config.getFondo();
@@ -655,6 +668,7 @@ private Logger log = LogManager.getLogger();
 			List<String> selecciones = bulk.getProductos();
 			selecciones.add(seleccion.getUuid());
 			bulk.setEnd(true);
+			bulk.setFecha(LocalDateTime.now());
 			this.bulkRepo.save(bulk);
 			this.bulkRepo.flush();
 			usuario.addBulk(bulk);
@@ -706,9 +720,15 @@ private Logger log = LogManager.getLogger();
 					String referencia = item.getConfiguracion().getReferencia();
 					String armazon = this.encryptor.decrypt(item.getAcabado().getNombre());
 					String colorArmazon = this.encryptor.decrypt(item.getColorArmazon().getNombre());
-					String acabadoFrente = this.encryptor.decrypt(item.getAcabadoFrente().getNombre());
-					String colorFrente = this.encryptor.decrypt(item.getColorFrente().getNombre());
-					String frente = this.encryptor.decrypt(item.getFrente().getNombre());
+					String frente = "Sin frente";
+					String acabadoFrente = "Sin frente";
+					String colorFrente = "Sin frente";
+					if(item.getFrente()!=null)
+					{
+						acabadoFrente = this.encryptor.decrypt(item.getAcabadoFrente().getNombre());
+						colorFrente = this.encryptor.decrypt(item.getColorFrente().getNombre());
+						frente = this.encryptor.decrypt(item.getFrente().getNombre());
+					}
 					String acabadoTirador = null;
 					String acabadoRegleta = null;
 					String colorTirador = null;
@@ -746,21 +766,17 @@ private Logger log = LogManager.getLogger();
 					
 					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,precioFinal, cantidad,null);
 					selecciones[index] = seleccion;
-					
-					if(fecha==null)
-					{
-						fecha = item.getFecha();
-					}
-					else if(fecha.isAfter(item.getFecha()))
-					{
-						fecha = item.getFecha();
-					}
 				}
 				else
 				{
 					selecciones[index] = null;
 				}
 				index++;
+			}
+			
+			if(bulk.getFecha()==null)
+			{
+				fecha = LocalDateTime.now();
 			}
 			
 			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario.getUuid(),selecciones,fecha,bulk.isEnd());
