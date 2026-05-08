@@ -35,6 +35,5 @@ build/
 ### Other ###
 .env
 *.png
-/logs
-*.log
-/imgs/**
+**/src/main/resources/imgs/**
+**/logs/**
