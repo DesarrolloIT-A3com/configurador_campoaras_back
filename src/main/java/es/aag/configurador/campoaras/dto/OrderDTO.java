@@ -19,7 +19,7 @@ public class OrderDTO
 	
 	private String usuario;
 	
-//	private LocalDateTime fecha;
+	private LocalDateTime fecha;
 	
 	private String [] productos;
 	

@@ -34,8 +34,8 @@ public class Pedido
 	@Column(nullable = false)
 	private List<String> productos;
 	
-//	@Column(nullable=false)
-//	private LocalDateTime fecha;
+	@Column(nullable=false)
+	private LocalDateTime fecha;
 	 
 	@Column(nullable=false)
 	private EstadoPedido estado;

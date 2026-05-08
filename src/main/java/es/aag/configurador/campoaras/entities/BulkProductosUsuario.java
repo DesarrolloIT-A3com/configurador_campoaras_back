@@ -1,5 +1,6 @@
 package es.aag.configurador.campoaras.entities;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import jakarta.persistence.Column;
@@ -35,4 +36,7 @@ public class BulkProductosUsuario
 	
 	@Column
 	private boolean end = false;
+	
+	@Column
+	private LocalDateTime fecha;
 }
