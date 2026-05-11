@@ -650,6 +650,7 @@ private Logger log = LogManager.getLogger();
 			bulk.setUsuarioUuid(usuario);
 			bulk.setProductos(selecciones);
 			bulk.setEnd(end);
+			bulk.setFecha(LocalDateTime.now());
 			this.bulkRepo.save(bulk);
 			this.bulkRepo.flush();
 			usuario.addBulk(bulk);
@@ -659,6 +660,7 @@ private Logger log = LogManager.getLogger();
 			List<String> selecciones = bulk.getProductos();
 			selecciones.add(seleccion.getUuid());
 			bulk.setEnd(false);
+			bulk.setFecha(LocalDateTime.now());
 			this.bulkRepo.save(bulk);
 			this.bulkRepo.flush();
 			usuario.addBulk(bulk);
@@ -777,6 +779,10 @@ private Logger log = LogManager.getLogger();
 			if(bulk.getFecha()==null)
 			{
 				fecha = LocalDateTime.now();
+			}
+			else
+			{
+				fecha = bulk.getFecha();
 			}
 			
 			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario.getUuid(),selecciones,fecha,bulk.isEnd());
