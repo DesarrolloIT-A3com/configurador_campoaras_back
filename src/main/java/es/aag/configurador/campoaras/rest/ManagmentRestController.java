@@ -996,7 +996,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/orders", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/orders", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.COMERCIAL_ROLE, seguridad, "/orders", usuario.getUSRToken());
 			
 			Optional<Usuario> userOpt = this.userRepo.findById(uuid);
 		

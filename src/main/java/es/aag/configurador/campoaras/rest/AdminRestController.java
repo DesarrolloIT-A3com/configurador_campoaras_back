@@ -60,9 +60,9 @@ public class AdminRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/get-users", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/get-users", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.COMERCIAL_ROLE, seguridad, "/get-users", usuario.getUSRToken());
 			
-			List<UserGetDTO> response = this.adminService.getUsers(usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			List<UserGetDTO> response = this.adminService.getUsers(usuario,usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
 			return ResponseEntity.ok().body(response);
 		}

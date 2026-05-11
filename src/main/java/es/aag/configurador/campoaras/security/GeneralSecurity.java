@@ -131,6 +131,7 @@ public class GeneralSecurity
 		
 		Rol superRole = rolRepo.findByNombre(CPConstants.SUPADMIN_ROLE);
 		Rol adminRole = rolRepo.findByNombre(CPConstants.ADMIN_ROLE);
+		Rol comercialRole = rolRepo.findByNombre(CPConstants.COMERCIAL_ROLE);
 		Rol clienteRole = rolRepo.findByNombre(CPConstants.CLIENTE_ROLE);
 		Rol verRole = rolRepo.findByNombre(CPConstants.VER_ROLE);
 		
@@ -154,10 +155,19 @@ public class GeneralSecurity
 				}
 				break;
 			}
+			case CPConstants.COMERCIAL_ROLE:
+			{
+				if(!rol.equals(superRole) && !rol.equals(adminRole) && !rol.equals(comercialRole))
+				{
+					log.warn("[AVISO] -- {} -- {} Ha intentado acceder a permisos de {} con un rol de {} -- {}",endpoint,userToken,CPConstants.COMERCIAL_ROLE,rol.getNombre(),seguridad);
+					throw new CPException(403,"No tienes permiso de acceso");
+				}
+				break;
+			}
 			case CPConstants.CLIENTE_ROLE:
 			{
 	
-				if(!rol.equals(superRole) && !rol.equals(adminRole) && !rol.equals(clienteRole))
+				if(!rol.equals(superRole) && !rol.equals(adminRole) && !rol.equals(comercialRole) && !rol.equals(clienteRole))
 				{
 					log.warn("[AVISO] -- {} -- {} Ha intentado acceder a permisos de {} con un rol de {} -- {}",endpoint,userToken,CPConstants.CLIENTE_ROLE,rol.getNombre(),seguridad);
 					throw new CPException(403,"No tienes permiso de acceso");
@@ -166,7 +176,7 @@ public class GeneralSecurity
 			}
 			case CPConstants.VER_ROLE:
 			{
-				if(!rol.equals(superRole) && !rol.equals(adminRole) && !rol.equals(clienteRole) && !rol.equals(verRole))
+				if(!rol.equals(superRole) && !rol.equals(adminRole) && !rol.equals(comercialRole) && !rol.equals(clienteRole) && !rol.equals(verRole))
 				{
 					log.warn("[AVISO] -- {} -- {} Ha intentado acceder a permisos de {} con un rol de {} -- {}",endpoint,userToken,CPConstants.VER_ROLE,rol.getNombre(),seguridad);
 					throw new CPException(403,"No tienes permiso de acceso");

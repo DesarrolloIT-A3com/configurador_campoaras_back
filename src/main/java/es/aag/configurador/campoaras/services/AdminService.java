@@ -48,12 +48,12 @@ public class AdminService
 	 * @param usrToken
 	 * @return
 	 */
-	public List<UserGetDTO> getUsers(String rol,String seguridad,String usrToken) throws CPException
+	public List<UserGetDTO> getUsers(Usuario usuario,String rol,String seguridad,String usrToken) throws CPException
 	{
 		List<Usuario> usuarios = this.userRepo.findAll();
 		List<UserGetDTO> response = new LinkedList<UserGetDTO>();
 		
-		if(!rol.equals(CPConstants.SUPADMIN_ROLE) &&  !rol.equals(CPConstants.ADMIN_ROLE))
+		if(!rol.equals(CPConstants.SUPADMIN_ROLE) &&  !rol.equals(CPConstants.ADMIN_ROLE) && !rol.equals(CPConstants.COMERCIAL_ROLE))
 		{
 			log.warn("[AVISO] -- /get-users -- {} Ha intentado obtener informacion de los usuarios con un permiso de {} -- {}",usrToken,rol,seguridad);
 			throw new CPException(403,"No tienes permiso");
@@ -61,9 +61,23 @@ public class AdminService
 		
 		for(Usuario user:usuarios)
 		{
-			UserGetDTO dto = new UserGetDTO(user.getUuid(),this.encryptor.decrypt(user.getEmail()),this.encryptor.decrypt(user.getUsername()),user.getDescuento(),user.getSegundoDescuento(),user.getComercial(),user.getAcceso(),user.getRol().getNombre(),!user.getRol().getNombre().equals(CPConstants.VER_ROLE));
+			UserGetDTO dto = new UserGetDTO(user.getUuid(),this.encryptor.decrypt(user.getEmail()),this.encryptor.decrypt(user.getUsername()),user.getDescuento(),user.getSegundoDescuento(),this.encryptor.decrypt(user.getComercial()),user.getAcceso(),user.getRol().getNombre(),!user.getRol().getNombre().equals(CPConstants.VER_ROLE));
 			
-			if(!user.getRol().getNombre().equals(CPConstants.SUPADMIN_ROLE))
+			String comercialEmail = this.encryptor.decrypt(usuario.getEmail());
+			String userEmail = "";
+			if(user.getComercial()!=null)
+			{
+				if(!user.getComercial().isBlank())
+				{
+					userEmail = this.encryptor.decrypt(user.getComercial());
+				}
+			}
+			
+			if(usuario.getRol().getNombre().equals(CPConstants.COMERCIAL_ROLE) && comercialEmail.equals(userEmail))
+			{
+				response.add(dto);
+			}
+			else if(!user.getRol().getNombre().equals(CPConstants.SUPADMIN_ROLE) && !usuario.getRol().getNombre().equals(CPConstants.COMERCIAL_ROLE))
 			{
 				response.add(dto);
 			}
@@ -209,8 +223,14 @@ public class AdminService
 			throw new CPException(400,"Datos invalidos");
 		}
 		
+		String comercial = this.encryptor.encrypt(body.getComercial());
+		if(body.getComercial().isBlank() || body.getComercial().equalsIgnoreCase("ninguno"))
+		{
+			comercial = null;
+		}
+		
 		usuario.setUsername(this.encryptor.encrypt(body.getUsername()));
-		usuario.setComercial(body.getComercial());
+		usuario.setComercial(comercial);
 		usuario.setDescuento(body.getDescuento());
 		usuario.setSegundoDescuento(body.getSegundoDescuento());
 		usuario.setRol(this.rolRepo.findByNombre(body.getRol()));

@@ -451,6 +451,14 @@ public class AuthService
 				capabilities.put("general_access", true);
 				break;
 			}
+			case CPConstants.COMERCIAL_ROLE:
+			{
+				log.info("[ACCION] -- {} -- {} Ha accedido con capacidades de {} -- {}",endpoint,userToken,rolename,seguridad);
+				capabilities.put("general_access", true);
+				capabilities.put("admin_panel",true);
+				capabilities.put("users_read", true);
+				break;
+			}
 			case CPConstants.ADMIN_ROLE:
 			{
 				log.info("[ACCION] -- {} -- {} Ha accedido con capacidades de {} -- {}",endpoint,userToken,rolename,seguridad);

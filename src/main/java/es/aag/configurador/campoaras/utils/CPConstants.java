@@ -11,6 +11,7 @@ public final class CPConstants
 	// ROLES
 	public final static String SUPADMIN_ROLE = "SUPERADMIN";
 	public final static String ADMIN_ROLE = "ADMIN";
+	public final static String COMERCIAL_ROLE = "COMERCIAL";
 	public final static String CLIENTE_ROLE = "CLIENTE";
 	public final static String VER_ROLE = "VERIFICATION";
 	

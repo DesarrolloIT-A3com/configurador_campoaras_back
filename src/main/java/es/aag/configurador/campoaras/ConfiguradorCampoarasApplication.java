@@ -50,6 +50,7 @@ public class ConfiguradorCampoarasApplication implements CommandLineRunner{
 		{
 			Rol superAdmin = new Rol();
 			Rol adminRol = new Rol();
+			Rol comercialRol = new Rol();
 			Rol clienteRol = new Rol();
 			Rol verificateRol = new Rol();
 			
@@ -57,6 +58,8 @@ public class ConfiguradorCampoarasApplication implements CommandLineRunner{
 			superAdmin.setNombre(CPConstants.SUPADMIN_ROLE);
 			adminRol.setUuid(UUID.randomUUID().toString());
 			adminRol.setNombre(CPConstants.ADMIN_ROLE);
+			comercialRol.setUuid(UUID.randomUUID().toString());
+			comercialRol.setNombre(CPConstants.COMERCIAL_ROLE);
 			clienteRol.setUuid(UUID.randomUUID().toString());
 			clienteRol.setNombre(CPConstants.CLIENTE_ROLE);
 			verificateRol.setUuid(UUID.randomUUID().toString());
@@ -65,6 +68,7 @@ public class ConfiguradorCampoarasApplication implements CommandLineRunner{
 			this.rolCreator.save(superAdmin);
 			this.rolCreator.save(adminRol);
 			this.rolCreator.save(clienteRol);
+			this.rolCreator.save(comercialRol);
 			this.rolCreator.save(verificateRol);
 			log.info("[ADMIN] creación de roles base");
 		}
