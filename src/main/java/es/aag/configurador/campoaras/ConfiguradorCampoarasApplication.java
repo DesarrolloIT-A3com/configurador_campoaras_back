@@ -9,12 +9,12 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import es.aag.configurador.campoaras.entities.Rol;
 import es.aag.configurador.campoaras.entities.Usuario;
-import es.aag.configurador.campoaras.repositories.IProductoRepository;
 import es.aag.configurador.campoaras.repositories.IRolRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.services.EncryptorService;
@@ -22,6 +22,7 @@ import es.aag.configurador.campoaras.utils.CPConstants;
 
 @SpringBootApplication
 @ComponentScan(basePackages = "es.aag.configurador.campoaras")
+@EnableScheduling
 public class ConfiguradorCampoarasApplication implements CommandLineRunner{
 	
 	private Logger log = LogManager.getLogger();
