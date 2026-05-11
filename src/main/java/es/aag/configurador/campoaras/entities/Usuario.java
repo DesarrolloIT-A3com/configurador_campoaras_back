@@ -41,6 +41,9 @@ public class Usuario
 	@Column(nullable = false)
 	private float descuento;
 	
+	@Column(nullable = false)
+	private float segundoDescuento = 0;
+	
 	// Este campo hace referencia al email del comercial
 	@Column
 	private String comercial;

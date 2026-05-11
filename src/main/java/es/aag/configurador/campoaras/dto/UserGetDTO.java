@@ -17,6 +17,8 @@ public class UserGetDTO
 	
 	private float descuento;
 	
+	private float segundoDescuento;
+	
 	private String comercial;
 	
 	private LocalDateTime acceso;

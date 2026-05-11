@@ -61,7 +61,7 @@ public class AdminService
 		
 		for(Usuario user:usuarios)
 		{
-			UserGetDTO dto = new UserGetDTO(user.getUuid(),this.encryptor.decrypt(user.getEmail()),this.encryptor.decrypt(user.getUsername()),user.getDescuento(),user.getComercial(),user.getAcceso(),user.getRol().getNombre(),!user.getRol().getNombre().equals(CPConstants.VER_ROLE));
+			UserGetDTO dto = new UserGetDTO(user.getUuid(),this.encryptor.decrypt(user.getEmail()),this.encryptor.decrypt(user.getUsername()),user.getDescuento(),user.getSegundoDescuento(),user.getComercial(),user.getAcceso(),user.getRol().getNombre(),!user.getRol().getNombre().equals(CPConstants.VER_ROLE));
 			
 			if(!user.getRol().getNombre().equals(CPConstants.SUPADMIN_ROLE))
 			{
@@ -200,18 +200,19 @@ public class AdminService
 		if(body.getUsername()==null || body.getComercial()==null || body.getRol() == null)
 		{
 			log.warn("[AVISO] -- /upt-user -- {} Ha introducido datos nulos para actualizar al usuario {} a actualizar con permiso de {} -- {}",usrToken,usuario.getUSRToken(),rol,seguridad);
-			throw new CPException(403,"No tienes permiso");
+			throw new CPException(400,"Datos invalidos");
 		}
 		
-		if(body.getUsername().isBlank() || body.getDescuento()<0 || body.getRol().isBlank())
+		if(body.getUsername().isBlank() || body.getDescuento()<0 || body.getSegundoDescuento()<0 || body.getRol().isBlank())
 		{
 			log.warn("[AVISO] -- /upt-user -- {} Ha introducido datos invalidos para actualizar al usuario {} con permiso de {} -- {}",usrToken,usuario.getUSRToken(),rol,seguridad);
-			throw new CPException(403,"No tienes permiso");
+			throw new CPException(400,"Datos invalidos");
 		}
 		
 		usuario.setUsername(this.encryptor.encrypt(body.getUsername()));
 		usuario.setComercial(body.getComercial());
 		usuario.setDescuento(body.getDescuento());
+		usuario.setSegundoDescuento(body.getSegundoDescuento());
 		usuario.setRol(this.rolRepo.findByNombre(body.getRol()));
 		
 		if(usuario.getRol().getNombre().equals(CPConstants.VER_ROLE))

@@ -69,7 +69,7 @@ public class GeneralRestController
 			
 			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/user", usuario.getUSRToken());
 			
-			UserGetDTO response = new UserGetDTO(usuario.getUuid(), this.encryptor.decrypt(usuario.getEmail()), this.encryptor.decrypt(usuario.getUsername()), usuario.getDescuento(), null , null, null, usuario.isVerificado());
+			UserGetDTO response = new UserGetDTO(usuario.getUuid(), this.encryptor.decrypt(usuario.getEmail()), this.encryptor.decrypt(usuario.getUsername()), usuario.getDescuento(), usuario.getSegundoDescuento(), null , null, null, usuario.isVerificado());
 			
 			log.info("[ACCION] -- /user -- {} Ha solicitado sus datos de usuario con un permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
 			
