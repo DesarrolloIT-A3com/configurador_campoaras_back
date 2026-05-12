@@ -38,6 +38,9 @@ public class Producto
 	@Column(nullable = true)
 	private String cajon;
 	
+	@Column
+	private int orden = 0;
+	
 	@OneToMany(mappedBy = "producto")
 	private Set<Serie> series = new HashSet<Serie>();
 	

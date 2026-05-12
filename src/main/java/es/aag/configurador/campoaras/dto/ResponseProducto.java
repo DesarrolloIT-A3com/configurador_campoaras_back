@@ -1,7 +1,5 @@
 package es.aag.configurador.campoaras.dto;
 
-import org.springframework.core.io.Resource;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,6 +17,8 @@ public class ResponseProducto
 	private String tipo;
 	
 	private String cajon;
+	
+	private int orden;
 	
 	private byte [] img;
 }
