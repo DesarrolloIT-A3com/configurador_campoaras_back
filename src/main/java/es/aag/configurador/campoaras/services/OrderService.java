@@ -218,6 +218,7 @@ public class OrderService
 		
 	}
 	
+	// TODO: Comprobar y cambiar los estados que no sean de CURSADO y NO_CURSADO. Como tip, busca en este fichero con Ctrl + F EstadoPedido
 	public void postOrder(OrderDTO body,String rol,String seguridad,String usrToken) throws CPException
 	{
 		Optional<Usuario> optUser = this.userRepo.findById(body.getUsuario());
@@ -387,6 +388,7 @@ public class OrderService
 	
 	public void actualizarEstado(EstadoPedido estado,String uuid,String rol,String seguridad,String usrToken) throws CPException
 	{
+		// TODO: Sustituye la condición EstadoPEdido.ENVIADO por CURSADO
 		if(!rol.equals(CPConstants.ADMIN_ROLE) && rol.equals(CPConstants.SUPADMIN_ROLE))
 		{
 			if(!estado.equals(EstadoPedido.ENVIADO))
@@ -395,6 +397,7 @@ public class OrderService
 				throw new CPException(400,"Datos invalidos");
 			}
 		}
+		// TODO: Cambia los valores de la lista
 		else
 		{
 			EstadoPedido [] estados = {EstadoPedido.NO_ENVIADO,EstadoPedido.ENVIADO,EstadoPedido.ACEPTADO,EstadoPedido.RECHAZADO};
