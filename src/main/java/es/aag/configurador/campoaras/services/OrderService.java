@@ -402,8 +402,7 @@ public class OrderService
 		else
 		{
 			// Array con los estados válidos para administradores
-			EstadoPedido[] estados = {EstadoPedido.NO_CURSADO, EstadoPedido.CURSADO, EstadoPedido.ACEPTADO, EstadoPedido.RECHAZADO};
-			
+			EstadoPedido[] estados = {EstadoPedido.NO_CURSADO, EstadoPedido.CURSADO};
 			Arrays.sort(estados);
 			if(Arrays.binarySearch(estados, estado) == -1)
 			{
