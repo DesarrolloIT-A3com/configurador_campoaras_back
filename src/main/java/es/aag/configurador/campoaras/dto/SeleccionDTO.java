@@ -54,4 +54,6 @@ public class SeleccionDTO
 	private int cantidad;
 	
 	private Boolean bulk;
+
+	private String referenciaBulk;
 }

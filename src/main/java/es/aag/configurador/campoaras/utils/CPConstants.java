@@ -74,8 +74,9 @@ public final class CPConstants
     
     // VALORES
     public static final String MAP_DEFAULT_VALUE = "CP-novalue";
+    public static final String REF_DEFAULT_VALUE = "PEDIENTE";
     
-    	// Se usan para métodos que soporten distintos metodos HTTP ejemplo manageProducts en ManagmentService
+    // Se usan para métodos que soporten distintos metodos HTTP ejemplo manageProducts en ManagmentService
     
     public static final String POST = "POST";
     public static final String GET = "GET";

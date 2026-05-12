@@ -15,6 +15,8 @@ public class ResponseSeleccion
 	
 	private String usuario;
 	
+	private String referencia;
+	
 	private SeleccionDTO [] selecciones;
 	
 	private LocalDateTime fecha;

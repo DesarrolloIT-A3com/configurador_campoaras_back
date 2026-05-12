@@ -27,6 +27,9 @@ public class BulkProductosUsuario
 	@Column(nullable = false,unique = true)
 	private String uuid;
 	
+	@Column(nullable = false)
+	private String referencia;
+	
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id",nullable = false)
 	private Usuario usuarioUuid;

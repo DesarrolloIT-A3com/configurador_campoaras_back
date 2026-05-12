@@ -88,6 +88,7 @@ public class OrderService
 			
 			SeleccionDTO [] selecciones = new SeleccionDTO[bulk.getProductos().size()];
 			int index = 0;
+			String referenciaBulk = this.encryptor.decrypt(bulk.getReferencia());
 			
 			for(String producto:bulk.getProductos())
 			{
@@ -147,7 +148,7 @@ public class OrderService
 					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
 					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
 					
-					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,precioFinal, cantidad,null);
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,precioFinal, cantidad,null,null);
 					selecciones[index] = seleccion;
 					
 					if(fecha==null)
@@ -167,7 +168,7 @@ public class OrderService
 				index++;
 				
 			}
-			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario,selecciones,fecha,bulk.isEnd());
+			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario,referenciaBulk,selecciones,fecha,bulk.isEnd());
 			
 			response.add(seleccion);
 		}
@@ -347,7 +348,7 @@ public class OrderService
 					
 					String serie = this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getProducto().getNombre()) +" "+this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getVariante());					
 					SeleccionDTO dto = new SeleccionDTO(uuidSel,referenciaSel,this.encryptor.decrypt(usuario.getUsername()),serie,fondo,ancho,alto,null,armazon,colorArmazon,null,frente,acabadoFrente,
-							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,precioFinal,cantidad,null);
+							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,precioFinal,cantidad,null,null);
 					
 					selecciones.add(dto);
 				}

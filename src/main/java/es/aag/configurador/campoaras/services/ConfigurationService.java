@@ -2,10 +2,12 @@ package es.aag.configurador.campoaras.services;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -349,6 +351,29 @@ private Logger log = LogManager.getLogger();
 			throw new CPException(400,"El ancho seleccionado es erroneo");
 		}
 		
+		// Apartado de cesta o bulk para validar que la referencia no venga vacía a la hora de configurar una cesta
+		if(body.getBulk()==null)
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto sin especificar añadir/finalizar un bulk con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Se debe indicar continuar o finalizar compra");
+		}
+		
+		String referenciaBulk = "";
+		
+		if(!body.getBulk() && body.getReferenciaBulk()==null)
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto sin especificar la referencia de un bulk con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Se debe indicar la referencia de la cesta");
+		}
+		
+		if(!body.getBulk() && body.getReferenciaBulk().isBlank())
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto sin especificar la referencia de un bulk con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Se debe indicar la referencia de la cesta");
+		}
+		
+		referenciaBulk = body.getReferenciaBulk();
+		
 		Optional<Configuracion> configuracionOpt = this.configuracionRepo.findById(referencia);
 		
 		if(!configuracionOpt.isPresent())
@@ -644,10 +669,24 @@ private Logger log = LogManager.getLogger();
 			bulk = new BulkProductosUsuario();
 			List<String> selecciones = List.of(seleccion.getUuid());
 			
+			if(!end && referenciaBulk.isBlank())
+			{
+				referenciaBulk = this.encryptor.encrypt(this.setDefaultReferencia(usuario));
+			}
+			else if(!end && !referenciaBulk.isBlank())
+			{
+				referenciaBulk = this.encryptor.encrypt(body.getReferenciaBulk());
+			}
+			else if(end && !referenciaBulk.isBlank())
+			{
+				referenciaBulk = this.encryptor.encrypt(body.getReferenciaBulk());
+			}
+			
 			uuid = UUID.randomUUID().toString();
 			
 			bulk.setUuid(uuid);
 			bulk.setUsuarioUuid(usuario);
+			bulk.setReferencia(referenciaBulk);
 			bulk.setProductos(selecciones);
 			bulk.setEnd(end);
 			bulk.setFecha(LocalDateTime.now());
@@ -657,8 +696,18 @@ private Logger log = LogManager.getLogger();
 		}
 		else if(body.getBulk())
 		{
+			if(referenciaBulk.isBlank())
+			{
+				referenciaBulk = this.encryptor.encrypt(this.setDefaultReferencia(usuario));
+			}
+			else
+			{
+				referenciaBulk = this.encryptor.encrypt(body.getReferenciaBulk());
+			}
+			
 			List<String> selecciones = bulk.getProductos();
 			selecciones.add(seleccion.getUuid());
+			bulk.setReferencia(referenciaBulk);
 			bulk.setEnd(false);
 			bulk.setFecha(LocalDateTime.now());
 			this.bulkRepo.save(bulk);
@@ -667,8 +716,10 @@ private Logger log = LogManager.getLogger();
 		}
 		else
 		{
+			referenciaBulk = this.encryptor.encrypt(body.getReferenciaBulk());
 			List<String> selecciones = bulk.getProductos();
 			selecciones.add(seleccion.getUuid());
+			bulk.setReferencia(referenciaBulk);
 			bulk.setEnd(true);
 			bulk.setFecha(LocalDateTime.now());
 			this.bulkRepo.save(bulk);
@@ -709,6 +760,7 @@ private Logger log = LogManager.getLogger();
 					continue;
 				}
 			}
+			String referenciaBulk = this.encryptor.decrypt(bulk.getReferencia());
 			SeleccionDTO [] selecciones = new SeleccionDTO[bulk.getProductos().size()];
 			int index = 0;
 			
@@ -766,7 +818,7 @@ private Logger log = LogManager.getLogger();
 					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
 					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
 					
-					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,precioFinal, cantidad,null);
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,precioFinal, cantidad,null,null);
 					selecciones[index] = seleccion;
 				}
 				else
@@ -785,7 +837,7 @@ private Logger log = LogManager.getLogger();
 				fecha = bulk.getFecha();
 			}
 			
-			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario.getUuid(),selecciones,fecha,bulk.isEnd());
+			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario.getUuid(),referenciaBulk,selecciones,fecha,bulk.isEnd());
 			
 			response.add(seleccion);
 			
@@ -1085,6 +1137,49 @@ private Logger log = LogManager.getLogger();
 		}
 		
 		return referencia;
+	}
+	
+	private String setDefaultReferencia(Usuario usuario)
+	{
+		String referenciaBulk = "";
+		Set<BulkProductosUsuario> bulks = usuario.getSelecciones() ;
+		int [] referencias = new int[0];
+		for(BulkProductosUsuario item:bulks)
+		{
+			if(item.getReferencia()!=null)
+			{
+				if(!item.getReferencia().isBlank())
+				{
+					String refTemp = this.encryptor.decrypt(item.getReferencia());
+					if(refTemp.startsWith(CPConstants.REF_DEFAULT_VALUE) && refTemp.split("_").length==3)
+					{
+						// Se recoge el numero que identifica a la referencia que es PENDIENTE_usuario_x capturamos posibles excepciones y seteamos 0 en defecto
+						try
+						{
+							int value = Integer.parseInt(refTemp.split("_")[2]);
+							referencias = Arrays.copyOf(referencias, referencias.length + 1);
+							referencias[referencias.length - 1] = value;
+						}
+						catch(IndexOutOfBoundsException | NumberFormatException ex)
+						{
+							referencias = Arrays.copyOf(referencias, referencias.length + 1);
+							referencias[referencias.length - 1] = 0;
+						}
+					}
+				}
+			}
+		}
+		int lastValue = 0;
+		Arrays.sort(referencias);
+		if(referencias.length>0)
+		{
+			lastValue = referencias[referencias.length - 1];
+		}
+		
+		lastValue += 1;
+		
+		referenciaBulk = CPConstants.REF_DEFAULT_VALUE+"_"+this.encryptor.decrypt(usuario.getUsername())+"_"+String.valueOf(lastValue);
+		return referenciaBulk;
 	}
 	
 }
