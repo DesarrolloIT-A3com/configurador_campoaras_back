@@ -218,7 +218,6 @@ public class OrderService
 		
 	}
 	
-	// TODO: Comprobar y cambiar los estados que no sean de CURSADO y NO_CURSADO. Como tip, busca en este fichero con Ctrl + F EstadoPedido
 	public void postOrder(OrderDTO body,String rol,String seguridad,String usrToken) throws CPException
 	{
 		Optional<Usuario> optUser = this.userRepo.findById(body.getUsuario());
@@ -388,11 +387,10 @@ public class OrderService
 	
 	public void actualizarEstado(EstadoPedido estado,String uuid,String rol,String seguridad,String usrToken) throws CPException
 	{
-		  if(estado == null) {
-		        throw new CPException(400, "El estado no puede ser nulo");
-		    }
+		if(estado == null) {
+			throw new CPException(400, "El estado no puede ser nulo");
+		}
 		  
-		// TODO: Sustituye la condición EstadoPEdido.ENVIADO por CURSADO
 		if(!rol.equals(CPConstants.ADMIN_ROLE) && rol.equals(CPConstants.SUPADMIN_ROLE))
 		{
 			if(!estado.equals(EstadoPedido.CURSADO))
@@ -401,13 +399,13 @@ public class OrderService
 				throw new CPException(400,"Datos invalidos");
 			}
 		}
-		// TODO: Cambia los valores de la lista
 		else
 		{
-			EstadoPedido [] estados = {EstadoPedido.NO_CURSADO,EstadoPedido.CURSADO,EstadoPedido.CURSADO,EstadoPedido.NO_CURSADO};
+			// Array con los estados válidos para administradores
+			EstadoPedido[] estados = {EstadoPedido.NO_CURSADO, EstadoPedido.CURSADO, EstadoPedido.ACEPTADO, EstadoPedido.RECHAZADO};
 			
 			Arrays.sort(estados);
-			if(Arrays.binarySearch(estados, estado)==-1)
+			if(Arrays.binarySearch(estados, estado) == -1)
 			{
 				log.warn("[AVISO] -- /orders -- {} Ha intentado actualizar el estado de un pedido al valor {} el cual no es válido con permiso de {} -- {}",usrToken,estado,rol,seguridad);
 				throw new CPException(400,"Datos invalidos");

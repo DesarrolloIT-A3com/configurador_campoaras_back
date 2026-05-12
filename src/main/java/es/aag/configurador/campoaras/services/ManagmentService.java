@@ -131,31 +131,37 @@ public class ManagmentService
 				// que sigan despues del 4
 				List<Producto> productos = this.productoRepo.findAll();				
 				productos.sort(Comparator.comparingInt(Producto::getOrden));
-				
+
 				int nuevoOrden = body.getOrden();
 				boolean ordenRepetido = false;
-				int indiceRepetido = -1;
-				
-				
+
+				// Verificar si el orden ya existe con un for normal
 				for(int i = 0; i < productos.size(); i++) {
-					if(productos.get(i).getOrden() == nuevoOrden) {
-						ordenRepetido = true;
-						indiceRepetido = i;
-						break;
-					}
+				    if(productos.get(i).getOrden() == nuevoOrden) {
+				        ordenRepetido = true;
+				        break;
+				    }
 				}
-				
+
+				// Si el orden está repetido, desplazar los productos con orden >= nuevoOrden
 				if(ordenRepetido) {
-					for(int i = 0; i < productos.size(); i++) {
-						Producto p = productos.get(i);
-						p.setOrden(p.getOrden() + 1);
-						this.productoRepo.save(p);
-					}	
+				    for(int i = 0; i < productos.size(); i++) {
+				        Producto p = productos.get(i);
+				        if(p.getOrden() >= nuevoOrden) {
+				            p.setOrden(p.getOrden() + 1);
+				            this.productoRepo.save(p);
+				        }
+				    }
+				    this.productoRepo.flush();
 				}
+
+				// Asignar el orden al nuevo producto
+				producto.setOrden(nuevoOrden);
+
+				// Guardar el nuevo producto
+				this.productoRepo.save(producto);
+				this.productoRepo.flush();
 				
-				
-				// Descomenta la siguiente sentencia cuando termines la validación
-				 producto.setOrden(body.getOrden());
 				//--------------------------
 				// FIN DE CAMBIOS DE LIBERTO | Descomenta toda esta descripción cuando termines
 				//--------------------------
@@ -220,13 +226,37 @@ public class ManagmentService
 				// que sigan despues del 4
 				List<Producto> productos = this.productoRepo.findAll();				
 				productos.sort(Comparator.comparingInt(Producto::getOrden));
+
+				int nuevoOrden = body.getOrden();
+				boolean ordenRepetido = false;
+
+				// Verificar si el orden ya existe con un for normal
+				for(int i = 0; i < productos.size(); i++) {
+				    if(productos.get(i).getOrden() == nuevoOrden) {
+				        ordenRepetido = true;
+				        break;
+				    }
+				}
+
+				// Si el orden está repetido, desplazar los productos con orden >= nuevoOrden
+				if(ordenRepetido) {
+				    for(int i = 0; i < productos.size(); i++) {
+				        Producto p = productos.get(i);
+				        if(p.getOrden() >= nuevoOrden) {
+				            p.setOrden(p.getOrden() + 1);
+				            this.productoRepo.save(p);
+				        }
+				    }
+				    this.productoRepo.flush();
+				}
+
+				// Asignar el orden al nuevo producto
+				producto.setOrden(nuevoOrden);
+
+				// Guardar el nuevo producto
+				this.productoRepo.save(producto);
+				this.productoRepo.flush();
 				
-				
-				// Descomenta la siguiente sentencia cuando termines la validación
-				// producto.setOrden(body.getOrden())
-				//--------------------------
-				// FIN DE CAMBIOS DE LIBERTO | Descomenta toda esta descripción cuando termines
-				//--------------------------
 				
 				if(body.getCajon() != null)
 				{
