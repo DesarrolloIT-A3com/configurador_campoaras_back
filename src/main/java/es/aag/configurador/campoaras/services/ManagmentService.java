@@ -132,9 +132,30 @@ public class ManagmentService
 				List<Producto> productos = this.productoRepo.findAll();				
 				productos.sort(Comparator.comparingInt(Producto::getOrden));
 				
+				int nuevoOrden = body.getOrden();
+				boolean ordenRepetido = false;
+				int indiceRepetido = -1;
+				
+				
+				for(int i = 0; i < productos.size(); i++) {
+					if(productos.get(i).getOrden() == nuevoOrden) {
+						ordenRepetido = true;
+						indiceRepetido = i;
+						break;
+					}
+				}
+				
+				if(ordenRepetido) {
+					for(int i = 0; i < productos.size(); i++) {
+						Producto p = productos.get(i);
+						p.setOrden(p.getOrden() + 1);
+						this.productoRepo.save(p);
+					}	
+				}
+				
 				
 				// Descomenta la siguiente sentencia cuando termines la validación
-				// producto.setOrden(body.getOrden())
+				 producto.setOrden(body.getOrden());
 				//--------------------------
 				// FIN DE CAMBIOS DE LIBERTO | Descomenta toda esta descripción cuando termines
 				//--------------------------

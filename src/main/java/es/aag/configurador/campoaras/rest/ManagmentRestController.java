@@ -908,37 +908,6 @@ public class ManagmentRestController
 		}
 		
 	}
- 	
-	@RequestMapping(method = RequestMethod.POST,value = "/load")
-	public ResponseEntity<?> loadData(HttpServletRequest request,Authentication authentication)
-	{
-		try
-		{
-			String ip = this.security.getClientIPAddress(request);
-			String seguridad = this.security.getIpInfo(ip, request);
-			
-			Usuario usuario = this.security.isAuth(userRepo, "/load", seguridad);
-			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/load", usuario.getUSRToken());
-			
-			this.service.launchData(usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
-			
-			return ResponseEntity.ok().build();
-		}
-		catch(CPException ex)
-		{
-			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
-		}
-		catch(Exception ex)
-		{
-			String ip = this.security.getClientIPAddress(request);
-			String seguridad = this.security.getIpInfo(ip, request);
-			
-			log.error("[ERROR] -- /load -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
-			log.error("[DETAILS]",ex);
-			return ResponseEntity.status(500).body("Error interno de servidor");		
-		}
-	}
 	
 	@RequestMapping(method = RequestMethod.GET,value = "/export")
 	public ResponseEntity<?>export(@RequestParam(value="uuid",required = true) String uuid,
