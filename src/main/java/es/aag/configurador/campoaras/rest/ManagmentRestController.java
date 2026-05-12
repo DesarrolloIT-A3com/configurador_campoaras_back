@@ -1,8 +1,6 @@
 package es.aag.configurador.campoaras.rest;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,7 +40,6 @@ import es.aag.configurador.campoaras.services.ManagmentService;
 import es.aag.configurador.campoaras.services.OrderService;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
-import es.aag.configurador.campoaras.utils.EstadoPedido;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
