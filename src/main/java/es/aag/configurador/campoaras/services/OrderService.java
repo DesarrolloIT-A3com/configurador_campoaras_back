@@ -266,7 +266,7 @@ public class OrderService
 		pedido.setReferencia(this.encryptor.encrypt(body.getReferencia()));
 		pedido.setUsuarioPedido(usuario);
 		pedido.setFecha(LocalDateTime.now());
-		pedido.setEstado(EstadoPedido.NO_ENVIADO);
+		pedido.setEstado(EstadoPedido.NO_CURSADO);
 		
 		log.info("[ACCION] -- /order-proposal -- {} Ha tramitado un pedido con permiso de {} -- {}",usrToken,rol,seguridad);
 		
@@ -388,10 +388,14 @@ public class OrderService
 	
 	public void actualizarEstado(EstadoPedido estado,String uuid,String rol,String seguridad,String usrToken) throws CPException
 	{
+		  if(estado == null) {
+		        throw new CPException(400, "El estado no puede ser nulo");
+		    }
+		  
 		// TODO: Sustituye la condición EstadoPEdido.ENVIADO por CURSADO
 		if(!rol.equals(CPConstants.ADMIN_ROLE) && rol.equals(CPConstants.SUPADMIN_ROLE))
 		{
-			if(!estado.equals(EstadoPedido.ENVIADO))
+			if(!estado.equals(EstadoPedido.CURSADO))
 			{
 				log.warn("[AVISO] -- /orders -- {} Ha intentado actualizar el estado de un pedido al valor {} el cual no está permitido con permiso de {} -- {}",usrToken,estado,rol,seguridad);
 				throw new CPException(400,"Datos invalidos");
@@ -400,8 +404,9 @@ public class OrderService
 		// TODO: Cambia los valores de la lista
 		else
 		{
-			EstadoPedido [] estados = {EstadoPedido.NO_ENVIADO,EstadoPedido.ENVIADO,EstadoPedido.ACEPTADO,EstadoPedido.RECHAZADO};
+			EstadoPedido [] estados = {EstadoPedido.NO_CURSADO,EstadoPedido.CURSADO,EstadoPedido.CURSADO,EstadoPedido.NO_CURSADO};
 			
+			Arrays.sort(estados);
 			if(Arrays.binarySearch(estados, estado)==-1)
 			{
 				log.warn("[AVISO] -- /orders -- {} Ha intentado actualizar el estado de un pedido al valor {} el cual no es válido con permiso de {} -- {}",usrToken,estado,rol,seguridad);
