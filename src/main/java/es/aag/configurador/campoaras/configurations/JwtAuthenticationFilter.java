@@ -97,16 +97,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
                 {
                     log.info("[AVISO] Se ha usado un token invalido -- {}", seguridad);
                 }
-            }
-            catch(ExpiredJwtException ex)
-            {
-                log.info("[AVISO] Se ha usado un token expirado -- {}", seguridad);
-            }
-            catch(Exception ex)
-            {
-                log.warn("[AVISO] Error inesperado validando token -- {}", seguridad);
-                log.error("[DETAILS]", ex);
-            }
+        	}
+                catch(ExpiredJwtException ex)
+                {
+                    log.info("[AVISO] Se ha usado un token expirado -- {}", seguridad);
+                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, 403, "Token expirado");
+                    return;
+                }
+                catch(Exception ex)
+                {
+                    log.warn("[AVISO] Error inesperado validando token -- {}", seguridad);
+                    log.error("[DETAILS]", ex);
+                    sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, 403, "Token inválido");
+                    return;
+                }
             
         }
        
@@ -115,7 +119,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter
         
     }
     
-    private boolean isPublicRoute(String requestUri)
+    private void sendErrorResponse(HttpServletResponse response, int httpStatus, int code, String message)
+            throws IOException
+    {
+        response.setStatus(httpStatus);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(
+            String.format("{\"code\":%d,\"message\":\"%s\"}", code, message)
+        );
+    }
+
+	private boolean isPublicRoute(String requestUri)
     {	
     	return PUBLIC_ROUTES.stream().anyMatch(route -> 
     	{

@@ -29,6 +29,8 @@ import es.aag.configurador.campoaras.repositories.IVerificationPassRepository;
 import es.aag.configurador.campoaras.repositories.IVerificationRepository;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Servicio encargado de la autenticación de usuario
@@ -40,7 +42,7 @@ public class AuthService
 {
 	private Logger log = LogManager.getLogger();
 	
-	private final long ACC_EXP_TIME = 30 * 60 * 1000; // 30 minutos
+ 	private final long ACC_EXP_TIME = 10 * 60 * 1000; // 10 minutos
 	private final long REF_EXP_TIME = 7 * 24 * 60 * 60; // 7 dias
 	
 	@Autowired
@@ -247,6 +249,51 @@ public class AuthService
 		
 		return new AuthDTO(accessToken, refreshToken, this.ACC_EXP_TIME, this.REF_EXP_TIME);
 	}
+	
+	public AuthDTO refresh(HttpServletRequest request, String seguridad) throws CPException
+	{
+		String refreshToken = null;
+	    if(request.getCookies() != null)
+	    {
+	        for(Cookie cookie : request.getCookies())
+	        {
+	            if("refresh_token".equals(cookie.getName()))
+	            {
+	                refreshToken = cookie.getValue();
+	                break;
+	            }
+	        }
+	    }
+
+	    if(refreshToken == null)
+	    {
+	    	log.warn("[AVISO] -- /refresh -- Intento de recuperación de sesión con un refresh token nulo -- {}",seguridad);
+	    	throw new CPException(401, "Credenciales de sesión inválidas");
+	    }
+
+	    if(!jwtUtil.validateToken(refreshToken))
+	    {
+	    	log.warn("[AVISO] -- /refresh -- Intento de recuperación de sesión con un refresh token inválido -- {}",seguridad);
+	    	throw new CPException(401, "Credenciales de sesión inválidas");
+	    }
+
+	    String userUuid = jwtUtil.extractSubject(refreshToken);
+	    
+	    Optional<Usuario> userOpt = this.usuarioRepo.findById(userUuid);
+	    
+	    if(!userOpt.isPresent())
+	    {
+	    	log.warn("[AVISO] -- /refresh -- Intento de recuperación de sesión con un refresh token inválido -- {}",seguridad);
+	    	throw new CPException(401, "Credenciales de sesión inválidas");
+	    }
+
+	    String newAccessToken = jwtUtil.generateToken(userUuid);
+	    String newRefreshToken = jwtUtil.generateRefreshToken(userUuid);
+	    
+	    log.info("[ACCION] -- /refresh -- {} Ha recuperado la sesión con un token válido -- {}",userOpt.get().getUSRToken(),seguridad);
+	    return new AuthDTO(newAccessToken, newRefreshToken, this.ACC_EXP_TIME, this.REF_EXP_TIME);
+	}
+	
 	
 	/**´
 	 * Metodo que autentica un usuario por JWT
@@ -519,4 +566,7 @@ public class AuthService
 		
 		return user;
 	}
+	
 }
+
+
