@@ -126,9 +126,6 @@ public class ManagmentService
 				producto.setNombre(this.encryptor.encrypt(body.getNombre()));
 				producto.setTipo(this.encryptor.encrypt(body.getTipo()));
 				
-				// TODO: Debes de realizar sobre este bloque hasta el siguiente comentario una validación en la numeración, si en la numeración aparece un número repetido
-				// ej: [1,2,3,4,5] y se añade un 4 la lista debe de pasar a ser [1,2,3,4,5,6] siendo que el 4 se mete en medio para ello aumentas el número de los productos
-				// que sigan despues del 4
 				List<Producto> productos = this.productoRepo.findAll();				
 				productos.sort(Comparator.comparingInt(Producto::getOrden));
 
@@ -162,9 +159,6 @@ public class ManagmentService
 				this.productoRepo.save(producto);
 				this.productoRepo.flush();
 				
-				//--------------------------
-				// FIN DE CAMBIOS DE LIBERTO | Descomenta toda esta descripción cuando termines
-				//--------------------------
 				if(body.getCajon() != null)
 				{
 					if(!body.getCajon().isBlank())
@@ -221,16 +215,12 @@ public class ManagmentService
 				producto.setNombre(this.encryptor.encrypt(body.getNombre()));
 				producto.setTipo(this.encryptor.encrypt(body.getTipo()));
 				
-				// TODO: Debes de realizar sobre este bloque hasta el siguiente comentario una validación en la numeración, si en la numeración aparece un número repetido
-				// ej: [1,2,3,4,5] y se añade un 4 la lista debe de pasar a ser [1,2,3,4,5,6] siendo que el 4 se mete en medio para ello aumentas el número de los productos
-				// que sigan despues del 4
 				List<Producto> productos = this.productoRepo.findAll();				
 				productos.sort(Comparator.comparingInt(Producto::getOrden));
 
 				int nuevoOrden = body.getOrden();
 				boolean ordenRepetido = false;
 
-				// Verificar si el orden ya existe con un for normal
 				for(int i = 0; i < productos.size(); i++) {
 				    if(productos.get(i).getOrden() == nuevoOrden) {
 				        ordenRepetido = true;
@@ -238,7 +228,6 @@ public class ManagmentService
 				    }
 				}
 
-				// Si el orden está repetido, desplazar los productos con orden >= nuevoOrden
 				if(ordenRepetido) {
 				    for(int i = 0; i < productos.size(); i++) {
 				        Producto p = productos.get(i);
