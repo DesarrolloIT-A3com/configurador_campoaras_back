@@ -226,6 +226,52 @@ public class AuthRestController
 		}
 	}
 	
+	@RequestMapping(method = RequestMethod.POST, value = "/refresh")
+	public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response)
+	{
+	    try
+	    {
+	        String ip = this.security.getClientIPAddress(request);
+	        String seguridad = this.security.getIpInfo(ip, request);
+
+	        AuthDTO tokens = this.authService.refresh(request, seguridad);
+
+	        // Nuevo access token en cookie
+	        ResponseCookie accessCookie = ResponseCookie.from("access_token", tokens.getAccessToken())
+	                .httpOnly(true)
+	                .secure(false)
+	                .sameSite("Lax")
+	                .path("/")
+	                .maxAge(tokens.getAccessExpire()).build();
+	        
+	     // REFRESH TOKEN EN COOKIE
+		ResponseCookie refreshCookie = ResponseCookie.from("refresh_token",tokens.getRefreshToken())
+				.httpOnly(true)
+				.secure(false)
+				.sameSite("Lax")
+				.path("/")
+				.maxAge(tokens.getRefreshExpire()).build();
+
+	        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+	        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
+	        return ResponseEntity.ok().build();
+	    }
+	    catch(CPException ex)
+	    {
+	        return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+	    }
+	    catch(Exception ex)
+	    {
+	        String ip = this.security.getClientIPAddress(request);
+	        String seguridad = this.security.getIpInfo(ip, request);
+
+	        log.error("[ERROR] -- /refresh -- Error interno de servidor -- {} -- {}", ex.getMessage(), seguridad);
+	        log.error("[DETAILS]", ex);
+	        return ResponseEntity.status(500).body("Error interno de servidor");
+	    }
+	}
+	
 	@RequestMapping(method = RequestMethod.GET,value = "/capabilities",produces = "application/json")
 	public ResponseEntity<?> getCapabilities(HttpServletRequest request,Authentication authentication)
 	{
