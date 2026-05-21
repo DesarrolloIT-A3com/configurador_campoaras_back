@@ -197,8 +197,6 @@ public class OrderService
 		
 		ProductoConfigurado seleccion = seleccionOpt.get();
 		
-		log.info("[ADMIN] -- /producto-configurado -- {} Ha eliminado la seleccion {} de la base de datos con permiso de {} -- {}",usrToken,seleccion.getUuid(),rol,seguridad);
-		this.seleccionRepo.delete(seleccion);
 		List<BulkProductosUsuario> bulkList = this.bulkRepo.findAll();
 		
 		for(BulkProductosUsuario bulk:bulkList)
@@ -222,6 +220,25 @@ public class OrderService
 				break;
 			}
 		}
+		
+		List<Pedido> allPedidos = this.pedidoRepo.findAll();
+		Set<Pedido> pedidos = new HashSet<Pedido>();
+		
+		for(Pedido pedido:allPedidos)
+		{
+			if(pedido.getProductos().contains(seleccion.getUuid()))
+			{
+				pedidos.add(pedido);
+				break;
+			}
+		}
+		
+		this.pedidoRepo.deleteAll(pedidos);
+		this.pedidoRepo.flush();
+		
+		log.info("[ADMIN] -- /producto-configurado -- {} Ha eliminado la seleccion {} de la base de datos con permiso de {} -- {}",usrToken,seleccion.getUuid(),rol,seguridad);
+		this.seleccionRepo.delete(seleccion);
+		this.seleccionRepo.flush();
 		
 		
 	}

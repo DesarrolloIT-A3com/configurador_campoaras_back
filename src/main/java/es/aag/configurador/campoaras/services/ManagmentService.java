@@ -32,15 +32,21 @@ import es.aag.configurador.campoaras.dto.ResponseFrente;
 import es.aag.configurador.campoaras.dto.ResponseProducto;
 import es.aag.configurador.campoaras.dto.ResponseSerie;
 import es.aag.configurador.campoaras.entities.Acabado;
+import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
 import es.aag.configurador.campoaras.entities.Color;
 import es.aag.configurador.campoaras.entities.Configuracion;
 import es.aag.configurador.campoaras.entities.Frente;
+import es.aag.configurador.campoaras.entities.Pedido;
 import es.aag.configurador.campoaras.entities.Producto;
+import es.aag.configurador.campoaras.entities.ProductoConfigurado;
 import es.aag.configurador.campoaras.entities.Serie;
 import es.aag.configurador.campoaras.repositories.IAcabadoRepository;
+import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
 import es.aag.configurador.campoaras.repositories.IColorRepository;
 import es.aag.configurador.campoaras.repositories.IConfiguracionRepository;
 import es.aag.configurador.campoaras.repositories.IFrenteRepository;
+import es.aag.configurador.campoaras.repositories.IPedidoRepository;
+import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
 import es.aag.configurador.campoaras.repositories.IProductoRepository;
 import es.aag.configurador.campoaras.repositories.ISerieRepository;
 import es.aag.configurador.campoaras.utils.CPConstants;
@@ -77,6 +83,15 @@ public class ManagmentService
 	
 	@Autowired
 	private IConfiguracionRepository configRepo;
+	
+	@Autowired
+	private IBulkProductosUsuarioRepository bulkRepo;
+	
+	@Autowired
+	private IProductoConfiguradoRepository seleccionRepo;
+	
+	@Autowired
+	private IPedidoRepository orderRepo;
 	
 	private final Validations validation;
 	
@@ -275,8 +290,96 @@ public class ManagmentService
 				
 				Producto toDelete = productoOpt.get();
 				
+				List<Serie> series = new LinkedList<Serie>();
+				List<Configuracion> configuraciones = new LinkedList<Configuracion>();
+				List<ProductoConfigurado> selecciones = new LinkedList<ProductoConfigurado>(); 
+				List<BulkProductosUsuario> allBulks = this.bulkRepo.findAll();
+				Set<BulkProductosUsuario> bulks = new HashSet<BulkProductosUsuario>(); 
+				List<Pedido> allPedidos = this.orderRepo.findAll();
+				Set<Pedido> pedidos = new HashSet<Pedido>(); 
+				List<Frente> frentes = this.frenteRepo.findAll();
+				List<Frente> frenteDelete = new LinkedList<Frente>();
+				
+				for(Serie serie:this.seriesRepo.findAll())
+				{
+					if(serie.getProducto().equals(toDelete))
+					{
+						series.add(serie);
+						List<Configuracion> heredado = this.configRepo.findBySerie(serie);
+						configuraciones.addAll(heredado);
+						
+						for(Configuracion config:heredado)
+						{
+							List<ProductoConfigurado> selHeredado = this.seleccionRepo.findByConfiguracion(config);
+							selecciones.addAll(selHeredado);
+							
+							for(ProductoConfigurado seleccion:selHeredado)
+							{
+								for(BulkProductosUsuario bulk:allBulks)
+								{
+									if(bulk.getProductos().contains(seleccion.getUuid()))
+									{
+										bulks.add(bulk);
+										break;
+									}
+								}
+								
+								for(Pedido pedido:allPedidos) 
+								{
+									if(pedido.getProductos().contains(seleccion.getUuid()))
+									{
+										pedidos.add(pedido);
+										break;
+									}
+								}
+
+							}
+						}
+					}
+				}
+				
+				for(Frente frente:frentes)
+				{
+					if(frente.getProductoFrente().contains(toDelete))
+					{
+						frente.removeProducto(toDelete);
+						
+						if(frente.getProductoFrente().isEmpty())
+						{
+							frenteDelete.add(frente);
+						}
+						else
+						{
+							this.frenteRepo.save(frente);
+							this.frenteRepo.flush();
+						}
+					}
+				}
+				
+				this.orderRepo.deleteAll(pedidos);
+				this.orderRepo.flush();
+				
+				this.bulkRepo.deleteAll(bulks);
+				this.bulkRepo.flush();
+				
+				this.seleccionRepo.deleteAll(selecciones);
+				this.seleccionRepo.flush();
+				
+				this.configRepo.deleteAll(configuraciones);
+				this.configRepo.flush();
+				
+				this.seriesRepo.deleteAll(series);
+				this.seriesRepo.flush();
+				
+				if(!frenteDelete.isEmpty())
+				{
+					this.frenteRepo.deleteAll(frenteDelete);
+					this.frenteRepo.flush();
+				}
+				
 				log.info("[ADMIN] -- /product -- {} Ha eliminado el producto {} de la base de datos con permiso de {} -- {}",usrToken,toDelete.getUuid(),rol,seguridad);
 				this.productoRepo.delete(toDelete);
+				this.productoRepo.flush();
 				
 				break;
 			}
@@ -431,6 +534,59 @@ public class ManagmentService
 				}
 				
 				Serie toDelete = serieOpt.get();
+				
+				List<Configuracion> configuraciones = new LinkedList<Configuracion>();
+				List<ProductoConfigurado> selecciones = new LinkedList<ProductoConfigurado>(); 
+				List<BulkProductosUsuario> allBulks = this.bulkRepo.findAll();
+				Set<BulkProductosUsuario> bulks = new HashSet<BulkProductosUsuario>(); 
+				List<Pedido> allPedidos = this.orderRepo.findAll();
+				Set<Pedido> pedidos = new HashSet<Pedido>(); 
+				
+				
+				List<Configuracion> heredado = this.configRepo.findBySerie(toDelete);
+				configuraciones.addAll(heredado);
+				
+				for(Configuracion config:heredado)
+				{
+					List<ProductoConfigurado> selHeredado = this.seleccionRepo.findByConfiguracion(config);
+					selecciones.addAll(selHeredado);
+					
+					for(ProductoConfigurado seleccion:selHeredado)
+					{
+						for(BulkProductosUsuario bulk:allBulks)
+						{
+							if(bulk.getProductos().contains(seleccion.getUuid()))
+							{
+								bulks.add(bulk);
+								break;
+							}
+						}
+						
+						for(Pedido pedido:allPedidos) 
+						{
+							if(pedido.getProductos().contains(seleccion.getUuid()))
+							{
+								pedidos.add(pedido);
+								break;
+							}
+						}
+
+					}
+				}
+				
+				
+				
+				this.orderRepo.deleteAll(pedidos);
+				this.orderRepo.flush();
+				
+				this.bulkRepo.deleteAll(bulks);
+				this.bulkRepo.flush();
+				
+				this.seleccionRepo.deleteAll(selecciones);
+				this.seleccionRepo.flush();
+				
+				this.configRepo.deleteAll(configuraciones);
+				this.configRepo.flush();
 				
 				log.info("[ADMIN] -- /series -- {} Ha eliminado la serie {} de la base de datos con permiso de {} -- {}",usrToken,toDelete.getUuid(),rol,seguridad);
 				this.seriesRepo.delete(toDelete);
@@ -655,6 +811,45 @@ public class ManagmentService
 				
 				Acabado toDelete = acabadoOpt.get();
 				
+				List<Configuracion> configuraciones = this.configRepo.findAll();
+				List<Configuracion> afectados = new LinkedList<Configuracion>();
+				List<Frente> frentesAfectados = this.frenteRepo.findAll();
+				
+				for(Configuracion config:configuraciones)
+				{
+					List<Map<String,Object>> newArmazon = new LinkedList<Map<String,Object>>();
+					
+					for(Map<String,Object> armazon:config.getArmazon())
+					{
+						String nombre = this.encryptor.decrypt(toDelete.getNombre()).toLowerCase();
+						String nombreAfectado = this.encryptor.decrypt( (String) armazon.get("nombre")).toLowerCase();
+						
+						if(!nombre.equals(nombreAfectado))
+						{
+							newArmazon.add(armazon);
+						}
+					}
+					if(newArmazon.size() != config.getArmazon().size())
+					{
+						config.setArmazon(newArmazon);
+						afectados.add(config);
+					}
+				}
+				
+				for(Frente frente:frentesAfectados)
+				{
+					if(frente.getAcabados().contains(toDelete))
+					{
+						frente.removeAcabado(toDelete);
+					}
+					
+					if(frente.getAcabadosExtension().contains(toDelete))
+					{
+						frente.removeAcabadoExtension(toDelete);
+					}
+
+				}
+				
 				// Se crea una copia para evitar ConcurrentModificationException a la hora de borrar referencias de la entidad a borrar
 				Set<Color> referencias = new HashSet<>(toDelete.getColores());
 				
@@ -665,6 +860,59 @@ public class ManagmentService
 						color.removeAcabado(toDelete);
 					}
 				}
+				
+				// BORRADO DE SELECCIONES Y PEDIDOS AFECTADOS POR LA CONFIGURACION EDITADA
+				List<ProductoConfigurado> selecciones = new LinkedList<ProductoConfigurado>(); 
+				List<BulkProductosUsuario> allBulks = this.bulkRepo.findAll();
+				Set<BulkProductosUsuario> bulks = new HashSet<BulkProductosUsuario>(); 
+				List<Pedido> allPedidos = this.orderRepo.findAll();
+				Set<Pedido> pedidos = new HashSet<Pedido>(); 
+				
+				for(Configuracion config:afectados)
+				{
+					List<ProductoConfigurado> selHeredado = this.seleccionRepo.findByConfiguracion(config);
+					selecciones.addAll(selHeredado);
+					
+					for(ProductoConfigurado seleccion:selHeredado)
+					{
+						for(BulkProductosUsuario bulk:allBulks)
+						{
+							if(bulk.getProductos().contains(seleccion.getUuid()))
+							{
+								bulks.add(bulk);
+								break;
+							}
+						}
+						
+						for(Pedido pedido:allPedidos) 
+						{
+							if(pedido.getProductos().contains(seleccion.getUuid()))
+							{
+								pedidos.add(pedido);
+								break;
+							}
+						}
+
+					}
+				}
+				
+				this.orderRepo.deleteAll(pedidos);
+				this.orderRepo.flush();
+				
+				this.bulkRepo.deleteAll(bulks);
+				this.bulkRepo.flush();
+				
+				this.seleccionRepo.deleteAll(selecciones);
+				this.seleccionRepo.flush();
+				
+				this.colorRepo.saveAll(referencias);
+				this.colorRepo.flush();
+				
+				this.frenteRepo.saveAll(frentesAfectados);
+				this.frenteRepo.flush();
+				
+				this.configRepo.saveAll(afectados);
+				this.configRepo.flush();
 				
 				log.info("[ADMIN] -- /acabados -- {} Ha eliminado el acabado {} de la base de datos con permiso de {} -- {}",usrToken,toDelete.getUuid(),rol,seguridad);
 				this.acabadoRepo.save(toDelete);
@@ -887,6 +1135,83 @@ public class ManagmentService
 						acabado.removeColor(toDelete);
 					}
 				}
+				
+				List<ProductoConfigurado> allSelecciones = this.seleccionRepo.findAll();
+				List<ProductoConfigurado> selecciones = new LinkedList<ProductoConfigurado>();
+				List<BulkProductosUsuario> allBulks = this.bulkRepo.findAll();
+				List<BulkProductosUsuario> bulks = new LinkedList<BulkProductosUsuario>();
+				List<Pedido> allPedidos = this.orderRepo.findAll();
+				Set<Pedido> pedidos = new HashSet<Pedido>();
+				
+				for(ProductoConfigurado seleccion:allSelecciones)
+				{
+					boolean delete = false;
+					if(seleccion.getColorArmazon().equals(toDelete))
+					{
+						delete = true;
+					}
+					
+					if(seleccion.getFrente()!=null)
+					{
+						if(seleccion.getColorFrente().equals(toDelete))
+						{
+							delete = true;
+						}
+						try
+						{
+							if(seleccion.getColorRegleta()!=null &&  seleccion.getColorRegleta().equals(toDelete))
+							{
+								delete = true;
+							}
+							
+							if(seleccion.getColorTirador()!=null &&  seleccion.getColorTirador().equals(toDelete))
+							{
+								delete = true;
+							}
+								
+						}
+						catch(NullPointerException ex)
+						{
+							
+						}
+						
+					}
+					
+					if(delete)
+					{
+						selecciones.add(seleccion);
+						
+						for(BulkProductosUsuario bulk:allBulks)
+						{
+							if(bulk.getProductos().contains(seleccion.getUuid()))
+							{
+								bulks.add(bulk);
+								break;
+							}
+						}
+						
+						for(Pedido pedido:allPedidos) 
+						{
+							if(pedido.getProductos().contains(seleccion.getUuid()))
+							{
+								pedidos.add(pedido);
+								break;
+							}
+						}	
+					}
+				}
+				
+				this.acabadoRepo.saveAll(referencias);
+				this.acabadoRepo.flush();
+				
+				this.orderRepo.deleteAll(pedidos);
+				this.orderRepo.flush();
+				
+				this.bulkRepo.deleteAll(bulks);
+				this.bulkRepo.flush();
+				
+				this.seleccionRepo.deleteAll(selecciones);
+				this.seleccionRepo.flush();
 				
 				log.info("[ADMIN] -- /colores -- {} Ha eliminado el color {} de la base de datos con permiso de {} -- {}",usrToken,toDelete.getUuid(),rol,seguridad);
 				this.colorRepo.save(toDelete);
@@ -1259,6 +1584,9 @@ public class ManagmentService
 					}
 				}
 				
+				this.acabadoRepo.saveAll(referencias);
+				this.acabadoRepo.flush();
+				
 				referencias = new HashSet<>(toDelete.getAcabadosExtension());
 				
 				if(referencias!=null)
@@ -1269,6 +1597,9 @@ public class ManagmentService
 					}
 				}
 				
+				this.acabadoRepo.saveAll(referencias);
+				this.acabadoRepo.flush();
+				
 				Set<Producto> referenciasProd = new HashSet<>(toDelete.getProductoFrente());
 				
 				if(referenciasProd!=null)
@@ -1278,6 +1609,55 @@ public class ManagmentService
 						producto.removeProducto(toDelete);
 					}
 				}
+				
+				this.productoRepo.saveAll(referenciasProd);
+				this.acabadoRepo.flush();
+				
+				
+				List<ProductoConfigurado> allSelecciones = this.seleccionRepo.findAll();
+				List<ProductoConfigurado> selecciones = new LinkedList<ProductoConfigurado>();
+				List<BulkProductosUsuario> allBulks = this.bulkRepo.findAll();
+				List<BulkProductosUsuario> bulks = new LinkedList<BulkProductosUsuario>();
+				List<Pedido> allPedidos = this.orderRepo.findAll();
+				Set<Pedido> pedidos = new HashSet<Pedido>();
+				
+				for(ProductoConfigurado seleccion:allSelecciones)
+				{
+					if(seleccion.getFrente()!=null)
+					{	
+						if(seleccion.getFrente().equals(toDelete))
+						{
+							selecciones.add(seleccion);
+							
+							for(BulkProductosUsuario bulk:allBulks)
+							{
+								if(bulk.getProductos().contains(seleccion.getUuid()))
+								{
+									bulks.add(bulk);
+									break;
+								}
+							}
+							
+							for(Pedido pedido:allPedidos) 
+							{
+								if(pedido.getProductos().contains(seleccion.getUuid()))
+								{
+									pedidos.add(pedido);
+									break;
+								}
+							}	
+						}
+					}
+				}
+				
+				this.orderRepo.deleteAll(pedidos);
+				this.orderRepo.flush();
+				
+				this.bulkRepo.deleteAll(bulks);
+				this.bulkRepo.flush();
+				
+				this.seleccionRepo.deleteAll(selecciones);
+				this.seleccionRepo.flush();
 				
 				log.info("[ADMIN] -- /frentes -- {} Ha eliminado el frente {} de la base de datos con permiso de {} -- {}",usrToken,toDelete.getUuid(),rol,seguridad);
 				this.frenteRepo.save(toDelete);

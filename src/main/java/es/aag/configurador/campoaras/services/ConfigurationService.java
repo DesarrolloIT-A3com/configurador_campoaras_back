@@ -2,6 +2,7 @@ package es.aag.configurador.campoaras.services;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
 import es.aag.configurador.campoaras.entities.Color;
 import es.aag.configurador.campoaras.entities.Configuracion;
 import es.aag.configurador.campoaras.entities.Frente;
+import es.aag.configurador.campoaras.entities.Pedido;
 import es.aag.configurador.campoaras.entities.Producto;
 import es.aag.configurador.campoaras.entities.ProductoConfigurado;
 import es.aag.configurador.campoaras.entities.Serie;
@@ -33,6 +35,7 @@ import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepositor
 import es.aag.configurador.campoaras.repositories.IColorRepository;
 import es.aag.configurador.campoaras.repositories.IConfiguracionRepository;
 import es.aag.configurador.campoaras.repositories.IFrenteRepository;
+import es.aag.configurador.campoaras.repositories.IPedidoRepository;
 import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
 import es.aag.configurador.campoaras.repositories.ISerieRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
@@ -75,6 +78,9 @@ private Logger log = LogManager.getLogger();
 	
 	@Autowired
 	private IBulkProductosUsuarioRepository bulkRepo;
+	
+	@Autowired
+	private IPedidoRepository orderRepo;
 	
 	private final Validations validation;
 	
@@ -295,6 +301,50 @@ private Logger log = LogManager.getLogger();
 				}
 				
 				Configuracion toDelete = configOpt.get();
+				
+				List<ProductoConfigurado> selecciones = new LinkedList<ProductoConfigurado>(); 
+				List<BulkProductosUsuario> allBulks = this.bulkRepo.findAll();
+				Set<BulkProductosUsuario> bulks = new HashSet<BulkProductosUsuario>(); 
+				List<Pedido> allPedidos = this.orderRepo.findAll();
+				Set<Pedido> pedidos = new HashSet<Pedido>(); 
+				
+				List<ProductoConfigurado> selHeredado = this.seleccionRepo.findByConfiguracion(toDelete);
+				selecciones.addAll(selHeredado);
+				
+				for(ProductoConfigurado seleccion:selHeredado)
+				{
+					for(BulkProductosUsuario bulk:allBulks)
+					{
+						if(bulk.getProductos().contains(seleccion.getUuid()))
+						{
+							bulks.add(bulk);
+							break;
+						}
+					}
+					
+					for(Pedido pedido:allPedidos) 
+					{
+						if(pedido.getProductos().contains(seleccion.getUuid()))
+						{
+							pedidos.add(pedido);
+							break;
+						}
+					}
+
+				}
+				
+				
+				
+				
+				this.orderRepo.deleteAll(pedidos);
+				this.orderRepo.flush();
+				
+				this.bulkRepo.deleteAll(bulks);
+				this.bulkRepo.flush();
+				
+				this.seleccionRepo.deleteAll(selecciones);
+				this.seleccionRepo.flush();
+				
 				log.info("[ADMIN] -- /configuracion -- {} Ha eliminado la configuracion {} de la base de datos con permiso de {} -- {}",usrToken,toDelete.getReferencia(),rol,seguridad);
 				this.configuracionRepo.delete(toDelete);
 				
