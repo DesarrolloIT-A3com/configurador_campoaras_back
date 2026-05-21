@@ -2,7 +2,6 @@ package es.aag.configurador.campoaras.services;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -345,6 +344,32 @@ private Logger log = LogManager.getLogger();
 			referencia = body.getReferencia();
 		}
 		
+		Optional<Serie> serieOpt = this.seriesRepo.findById(body.getSerie());
+		
+		if(!serieOpt.isPresent())
+		{
+			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto introduciendo una variante erronea con un permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Se debe de introducir una variante para continuar");
+		}
+		
+		Serie serie = serieOpt.get();
+		List<Configuracion> configuraciones = this.configuracionRepo.findAll();
+		List<Map<String,Object>> extras = new LinkedList<Map<String,Object>>();
+		
+		
+		for(Configuracion config:configuraciones)
+		{			
+			if(!config.getSerie().getUuid().equals(serie.getUuid()) || config.getExtras()==null)
+			{
+				continue;
+			}	
+			if(!config.getExtras().isEmpty())
+			{
+				extras.addAll(config.getExtras());
+			}
+		}
+		
+		
 		if(referencia.equals("error"))
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con una medida de ancho erronea con un permiso de {} -- {}",usrToken,rol,seguridad);
@@ -454,7 +479,7 @@ private Logger log = LogManager.getLogger();
 		{
 			if(acabadoTirador==null)
 			{
-				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de tirador erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un acabado de tirador erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
 				throw new CPException(404,"Se ha seleccionado un acabado erroneo para el tirador dado");
 			}
 			
@@ -470,7 +495,7 @@ private Logger log = LogManager.getLogger();
 		{
 			if(acabadoRegleta==null)
 			{
-				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un acabdo de regleta erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
+				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un acabado de regleta erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
 				throw new CPException(404,"Se ha seleccionado un acabado erroneo para la regleta dada");
 			}
 			
@@ -510,7 +535,7 @@ private Logger log = LogManager.getLogger();
 				
 		if(producto.getFrentesProductos().size()>0)
 		{
-			this.validateAcabado(acabadoConfig, body.getAcabadoFrente());
+			precioFrente = this.validateAcabado(acabadoConfig, body.getAcabadoFrente());
 			
 			if(precioFrente==-1)
 			{
@@ -523,41 +548,9 @@ private Logger log = LogManager.getLogger();
 				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el frente dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
 				throw new CPException(400,"El color del frente dado no se encuentra en la configuración dada");
 			}
-						
-			if(acabadoTirador != null)
-			{
-				precioTirador = this.validateAcabado(acabadoConfig, body.getAcabadoTirador());
-				if(precioTirador == -1)
-				{
-					log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un acabado de tirador erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-					throw new CPException(400,"Datos inválidos");
-				}
-				
-				if(!acabadoTirador.getColores().contains(colorTirador))
-				{
-					log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el tirador dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-					throw new CPException(400,"El color del tirador dado no se encuentra en la configuración dada");
-				}
-				
-				precioTirador = 0;
-			}
-						
-			if(acabadoRegleta != null)
-			{
-				precioRegleta = this.validateAcabado(acabadoConfig, body.getAcabadoRegleta());
-				if(precioRegleta == -1)
-				{
-					log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un acabado de regleta erroneo en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-					throw new CPException(400,"Datos inválidos");
-				}
-				
-				if(!acabadoRegleta.getColores().contains(colorRegleta))
-				{
-					log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el tirador dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
-					throw new CPException(400,"El color de la regleta dada no se encuentra en la configuración dada");
-				}
-				precioRegleta = 0;
-			}
+			// Se setean los precios de regleta y tirador a 0 para evitar sumas incorrectas en el precio final
+			precioRegleta = 0;
+			precioTirador = 0;
 		}
 		
 		float precioFinal = 0;
@@ -580,8 +573,6 @@ private Logger log = LogManager.getLogger();
 			// En caso de que no haya frente acabadoFrente.getTipos() es nulo, por lo que se coge el precio más alto
 			precioFinal = precioArmazon > precioFrente ? precioArmazon : precioFrente;
 		}
-		
-		precioFinal = (precioFinal * body.getCantidad());
 		
 		float fondo = config.getFondo();
 		float ancho = config.getAncho();
@@ -616,6 +607,34 @@ private Logger log = LogManager.getLogger();
 				seleccion.setAlto(alto);
 			}
 		}
+		
+		List<String> extrasSeleccion = new LinkedList<String>();
+		
+		if(!extras.isEmpty() && !body.getExtras().isEmpty())
+		{
+			for(Map<String,Object> extra:extras)
+			{
+				String nombre = this.encryptor.decrypt((String) extra.get("nombre"));
+				
+				if(body.getExtras().contains(nombre))
+				{
+					Number rawPrecio = (Number) extra.get("precio");
+					// Si en el extra se indica porcentaje se realiza el porcentaje sobre el precio final marcado
+					if(nombre.contains("(%)"))
+					{
+						precioFinal = precioFinal + ((precioFinal * rawPrecio.floatValue()) / 100);
+					}
+					else
+					{
+						precioFinal+=rawPrecio.floatValue();
+					}
+					
+					extrasSeleccion.add(this.encryptor.encrypt(nombre));
+				}
+			}
+		}
+		
+		precioFinal = (precioFinal * body.getCantidad());
 		// Fase de inserción de datos
 		
 		seleccion.setUuid(uuid);
@@ -634,6 +653,7 @@ private Logger log = LogManager.getLogger();
 		seleccion.setPrecioFrente(precioFrente);
 		seleccion.setPrecioTirador(precioTirador);
 		seleccion.setPrecioRegleta(precioRegleta);
+		seleccion.setExtras(extrasSeleccion);
 		seleccion.setPrecioFinal(precioFinal);
 		seleccion.setCantidad(body.getCantidad());
 		seleccion.setFecha(LocalDateTime.now());
@@ -818,7 +838,14 @@ private Logger log = LogManager.getLogger();
 					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
 					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
 					
-					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,precioFinal, cantidad,null,null);
+					List<String> extrasDecrypt = new LinkedList<String>();
+					
+					for(String extra:item.getExtras())
+					{
+						extrasDecrypt.add(this.encryptor.decrypt(extra));
+					}
+					
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,extrasDecrypt,precioFinal, cantidad,null,null);
 					selecciones[index] = seleccion;
 				}
 				else

@@ -1,5 +1,7 @@
 package es.aag.configurador.campoaras.dto;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,6 +50,8 @@ public class SeleccionDTO
 	private String acabadoRegleta;
 	
 	private String colorRegleta;
+	
+	private List<String> extras;
 	
 	private Float precioFinal;
 	

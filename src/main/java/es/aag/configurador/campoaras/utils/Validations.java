@@ -321,7 +321,7 @@ public class Validations
 						
 						if(precio != null)
 						{
-							if(precio>0)
+							if(precio>=0)
 							{
 								armazonSaneado.add(item);
 							}
@@ -354,7 +354,7 @@ public class Validations
 					
 					if(nombreExtra!=null && precio!=null)
 					{
-						if(!nombreExtra.equals(CPConstants.MAP_DEFAULT_VALUE) && precio>0)
+						if(!nombreExtra.equals(CPConstants.MAP_DEFAULT_VALUE) && precio>=0)
 						{
 							item.put("nombre", this.encryptor.encrypt(nombreExtra));
 							extrasSaneado.add(item);

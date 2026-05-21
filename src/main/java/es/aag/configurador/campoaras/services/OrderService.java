@@ -148,7 +148,14 @@ public class OrderService
 					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
 					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
 					
-					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,precioFinal, cantidad,null,null);
+					List<String> extrasDecrypt = new LinkedList<String>();
+					
+					for(String extra:item.getExtras())
+					{
+						extrasDecrypt.add(this.encryptor.decrypt(extra));
+					}
+					
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta, extrasDecrypt,precioFinal, cantidad,null,null);
 					selecciones[index] = seleccion;
 					
 					if(fecha==null)
@@ -345,9 +352,17 @@ public class OrderService
 					float precioFinal = seleccion.getPrecioFinal();
 					int cantidad = seleccion.getCantidad();
 					
-					String serie = this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getProducto().getNombre()) +" "+this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getVariante());					
+					List<String> extrasDecrypt = new LinkedList<String>();
+					
+					for(String extra:seleccion.getExtras())
+					{
+						extrasDecrypt.add(this.encryptor.decrypt(extra));
+					}
+					
+					String serie = this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getProducto().getNombre()) +" "+this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getVariante());
+					
 					SeleccionDTO dto = new SeleccionDTO(uuidSel,referenciaSel,this.encryptor.decrypt(usuario.getUsername()),serie,fondo,ancho,alto,null,armazon,colorArmazon,null,frente,acabadoFrente,
-							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,precioFinal,cantidad,null,null);
+							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,extrasDecrypt,precioFinal,cantidad,null,null);
 					
 					selecciones.add(dto);
 				}

@@ -1,6 +1,7 @@
 package es.aag.configurador.campoaras.entities;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -91,6 +92,10 @@ public class ProductoConfigurado
 	
 	@Column
 	private Float alto;
+	
+	// Lista que identifica a los extras
+	@Column
+	private List<String> extras;
 	
 	@Column
 	private float precioFinal;
