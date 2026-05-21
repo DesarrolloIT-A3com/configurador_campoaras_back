@@ -43,7 +43,7 @@ public class AuthService
 	private Logger log = LogManager.getLogger();
 	
  	private final long ACC_EXP_TIME = 10 * 60 * 1000; // 10 minutos
-	private final long REF_EXP_TIME = 7 * 24 * 60 * 60; // 7 dias
+	private final long REF_EXP_TIME = 3 * 60 * 60 * 1000; // 3 horas
 	
 	@Autowired
 	private IUsuarioRepository usuarioRepo;

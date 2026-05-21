@@ -18,7 +18,7 @@ public class JwtUtil
 	@Value("${CPWT_KEY}")
 	private String SECRET_KEY;
 	private final long ACC_EXP_TIME = 10 * 60 * 1000; // 10 minutos
-	private final long REF_EXP_TIME = 7 * 24 * 60 * 60 * 1000; // 7 días
+	private final long REF_EXP_TIME = 3 * 60 * 60 * 1000; // 3 horas
 	
 	private Key getSigningKey()
 	{

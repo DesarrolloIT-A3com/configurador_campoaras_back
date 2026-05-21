@@ -65,7 +65,7 @@ logging:
 jwt:
   secret-key: ${CPWT_KEY}
   acces-token-expiration: 600000
-  refresh-token-expiration: 2592000000
+  refresh-token-expiration: 10800000
 
 url-cors: ${URL_CORS}
 
