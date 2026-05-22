@@ -10,17 +10,21 @@ spring:
     hikari:
       connection-timeout: 60000
       maximum-pool-size: 5
+
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${ADMIN_MAIL}
-    password: ${MAIL_PASSWORD}
+    host: mail.creacionescampoaras.com
+    port: 465
+    username: ${COMUNICATION_MAIL}
+    password: ${COMUNICATION_PASS}
+    protocol: smtp
     properties:
       mail:
         smtp:
           auth: true
-          starttls:
+          ssl:
             enable: true
+          starttls:
+            enable: false
   server:
     address: 192.168.1.169
     #address: 192.168.0.177

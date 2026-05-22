@@ -32,7 +32,7 @@ public class MailService
 
 	public MailService() 
 	{
-		this.sender = CPConstants.ADMIN_MAIL;
+		this.sender = CPConstants.COMUNICATION_MAIL;
 	}
 	
 	public void sendMail(String username,String receiver,String usrToken,String seguridad,String verCode) throws CPException
@@ -216,6 +216,7 @@ public class MailService
 		catch(MailException | MessagingException |  UnsupportedEncodingException exception)
 		{
 			log.error("[ERROR] No se ha podido enviar el mensaje de correo a {} - {} - causa {}",usrToken,seguridad,exception);
+			log.error("[DETAILS] {}",exception.getMessage());
 			throw new CPException(500,"Error interno del servidor, problemas al enviar mail",exception);
 		}
 	}
@@ -400,7 +401,8 @@ public class MailService
 		}
 		catch(MailException | MessagingException |  UnsupportedEncodingException exception)
 		{
-			log.error("[ERROR] No se ha podido enviar el mensaje de correo a {} - {} - causa {}",usrToken,seguridad,exception);
+			log.error("[ERROR] No se ha podido enviar el mensaje de correo a {} - {}",usrToken,seguridad);
+			log.error("[DETAILS] {}",exception.getMessage());
 			throw new CPException(500,"Error interno del servidor, problemas al enviar mail",exception);
 		}
 	}

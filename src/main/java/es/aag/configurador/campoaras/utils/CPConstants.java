@@ -36,6 +36,7 @@ public final class CPConstants
     public final static String[] ADMIN_NAME = {dotenv.get("ADMIN_NAME")};
     public final static String[] ADMIN_PASS = {dotenv.get("ADMIN_PASS")};
     public static final String ADMIN_MAIL = dotenv.get("ADMIN_MAIL");
+    public static final String COMUNICATION_MAIL = dotenv.get("COMUNICATION_MAIL");
 
     
     
