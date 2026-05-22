@@ -484,9 +484,27 @@ private Logger log = LogManager.getLogger();
 			throw new CPException(404,"Se ha seleccionado un acabado erroneo para el armazon dado");
 		}
 		
+		String codigoArmazon = null;
+		
+		for(String tipo:armazon.getTipos())
+		{
+			tipo = this.encryptor.decrypt(tipo);
+			
+			if(tipo.toLowerCase().equals(CPConstants.CODIGO_VALUE.toLowerCase()))
+			{
+				codigoArmazon = body.getColorArmazon();
+			}
+			
+			if(codigoArmazon!=null && !this.evalueCodigoColor(codigoArmazon))
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha configurado un producto con un codigo de color erroneo de armazón en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+				throw new CPException(400,"El codigo de color para el armazon es incorrecto");
+			}
+		}
+		
 		Color colorArmazon = this.validation.findColor(body.getColorArmazon());
 		
-		if(colorArmazon==null)
+		if(colorArmazon==null && codigoArmazon==null)
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de armazon erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
 			throw new CPException(404,"Se ha seleccionado un color de armazon erroneo");
@@ -509,9 +527,30 @@ private Logger log = LogManager.getLogger();
 			throw new CPException(404,"Se ha seleccionado un acabado erroneo para el frente dado");
 		}
 		
+		String codigoFrente = null;
+		
+		if(frente!=null)
+		{
+			for(String tipo:acabadoFrente.getTipos())
+			{
+				tipo = this.encryptor.decrypt(tipo);
+				
+				if(tipo.toLowerCase().equals(CPConstants.CODIGO_VALUE.toLowerCase()))
+				{
+					codigoFrente = body.getColorFrente();
+				}
+			}
+			
+			if(codigoFrente!=null && !this.evalueCodigoColor(codigoFrente))
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha configurado un producto con un codigo de color erroneo de frente en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+				throw new CPException(400,"El codigo de color para el armazon es incorrecto");
+			}
+		}
+		
 		Color colorFrente = this.validation.findColor(body.getColorFrente());
 		
-		if(colorFrente==null && producto.getFrentesProductos().size()>0)
+		if(colorFrente==null && producto.getFrentesProductos().size()>0 && codigoFrente==null)
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de frente erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
 			throw new CPException(404,"Se ha seleccionado un color de frente erroneo");
@@ -525,6 +564,10 @@ private Logger log = LogManager.getLogger();
 		
 		Color colorRegleta = this.validation.findColor(body.getColorRegleta());
 		
+		String codigoRegleta = null;
+		
+		String codigoTirador = null;
+		
 		if(body.getAcabadoTirador() != null) 
 		{
 			if(acabadoTirador==null)
@@ -533,7 +576,23 @@ private Logger log = LogManager.getLogger();
 				throw new CPException(404,"Se ha seleccionado un acabado erroneo para el tirador dado");
 			}
 			
-			if(colorTirador==null)
+			for(String tipo:acabadoTirador.getTipos())
+			{
+				tipo = this.encryptor.decrypt(tipo);
+				
+				if(tipo.toLowerCase().equals(CPConstants.CODIGO_VALUE.toLowerCase()))
+				{
+					codigoTirador = body.getColorTirador();
+				}
+				
+				if(codigoTirador!=null && !this.evalueCodigoColor(codigoTirador))
+				{
+					log.warn("[AVISO] -- /configure -- {} Ha configurado un producto con un codigo de color erroneo de tirador en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+					throw new CPException(400,"El codigo de color para el armazon es incorrecto");
+				}
+			}
+			
+			if(colorTirador==null && codigoTirador==null)
 			{
 				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de tirador erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
 				throw new CPException(404,"Se ha seleccionado un color de tirador erroneo");
@@ -549,7 +608,23 @@ private Logger log = LogManager.getLogger();
 				throw new CPException(404,"Se ha seleccionado un acabado erroneo para la regleta dada");
 			}
 			
-			if(colorRegleta==null)
+			for(String tipo:acabadoRegleta.getTipos())
+			{
+				tipo = this.encryptor.decrypt(tipo);
+				
+				if(tipo.toLowerCase().equals(CPConstants.CODIGO_VALUE.toLowerCase()))
+				{
+					codigoRegleta = body.getColorRegleta();
+				}
+				
+				if(codigoRegleta!=null && !this.evalueCodigoColor(codigoRegleta))
+				{
+					log.warn("[AVISO] -- /configure -- {} Ha configurado un producto con un codigo de color erroneo de regleta en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+					throw new CPException(400,"El codigo de color para el armazon es incorrecto");
+				}
+			}
+			
+			if(colorRegleta==null && codigoRegleta==null)
 			{
 				log.warn("[AVISO] -- /configure -- {} Ha intentado configurar un producto con un color de regleta erroneo con un permiso de {} -- {}",usrToken,rol,seguridad);
 				throw new CPException(404,"Se ha seleccionado un color de regleta erroneo");
@@ -567,7 +642,7 @@ private Logger log = LogManager.getLogger();
 			throw new CPException(400,"El armazon seleccionado no existe dentro de la configuracion dada");
 		}
 		
-		if(!armazon.getColores().contains(colorArmazon))
+		if(!armazon.getColores().contains(colorArmazon) && codigoArmazon==null)
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha configurado un producto con un color que no existe en el armazón dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
 			throw new CPException(400,"El color del armazon dado no se encuentra en la configuración dada");
@@ -593,11 +668,30 @@ private Logger log = LogManager.getLogger();
 				throw new CPException(400,"El acabado del frente ni existe dentro de la configuracion dada");
 			}
 			
-			if(!acabadoFrente.getColores().contains(colorFrente))
+			if(!acabadoFrente.getColores().contains(colorFrente) && codigoFrente==null)
 			{
 				log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el frente dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
 				throw new CPException(400,"El color del frente dado no se encuentra en la configuración dada");
 			}
+			
+			if(acabadoTirador!=null)
+			{
+				if(!acabadoTirador.getColores().contains(colorTirador) && codigoTirador==null)
+				{
+					log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en el tirador dado en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+					throw new CPException(400,"El color del tirador dado no se encuentra en la configuración dada");
+				}
+			}
+			
+			if(acabadoRegleta!=null)
+			{
+				if(!acabadoRegleta.getColores().contains(colorRegleta) && codigoRegleta==null)
+				{
+					log.warn("[AVISO -- /configure -- {} Ha configurado un producto con un color que no existe en la regleta dada en la referencia {} con permiso de {} -- {}",usrToken,body.getReferencia(),rol,seguridad);
+					throw new CPException(400,"El color de la regleta dada no se encuentra en la configuración dada");
+				}
+			}
+			
 			// Se setean los precios de regleta y tirador a 0 para evitar sumas incorrectas en el precio final
 			precioRegleta = 0;
 			precioTirador = 0;
@@ -685,8 +779,13 @@ private Logger log = LogManager.getLogger();
 		}
 		
 		precioFinal = (precioFinal * body.getCantidad());
-		// Fase de inserción de datos
 		
+		codigoArmazon = codigoArmazon!=null ? this.encryptor.encrypt(codigoArmazon) : codigoArmazon;
+		codigoFrente = codigoFrente!=null ? this.encryptor.encrypt(codigoFrente) : codigoFrente;
+		codigoTirador = codigoTirador!=null ? this.encryptor.encrypt(codigoTirador) : codigoTirador;
+		codigoRegleta = codigoRegleta!=null ? this.encryptor.encrypt(codigoRegleta) : codigoRegleta;
+
+		// Fase de inserción de datos
 		seleccion.setUuid(uuid);
 		seleccion.setConfiguracion(config);
 		seleccion.setUsuario(usuario);
@@ -696,9 +795,13 @@ private Logger log = LogManager.getLogger();
 		seleccion.setAcabadoTirador(acabadoTirador);
 		seleccion.setAcabadoRegleta(acabadoRegleta);
 		seleccion.setColorArmazon(colorArmazon);
+		seleccion.setCodigoColorArmazon(codigoArmazon);
 		seleccion.setColorFrente(colorFrente);
+		seleccion.setCodigoColorFrente(codigoFrente);
 		seleccion.setColorRegleta(colorRegleta);
+		seleccion.setCodigoColorRegleta(codigoRegleta);
 		seleccion.setColorTirador(colorTirador);
+		seleccion.setCodigoColorTirador(codigoTirador);
 		seleccion.setPrecioArmazon(precioArmazon);
 		seleccion.setPrecioFrente(precioFrente);
 		seleccion.setPrecioTirador(precioTirador);
@@ -843,14 +946,29 @@ private Logger log = LogManager.getLogger();
 					String uuid = item.getUuid();
 					String referencia = item.getConfiguracion().getReferencia();
 					String armazon = this.encryptor.decrypt(item.getAcabado().getNombre());
-					String colorArmazon = this.encryptor.decrypt(item.getColorArmazon().getNombre());
+					String colorArmazon = "Sin color";
+					if(item.getCodigoColorArmazon()==null)
+					{
+						colorArmazon = this.encryptor.decrypt(item.getColorArmazon().getNombre());
+					}
+					else
+					{
+						colorArmazon = this.encryptor.decrypt(item.getCodigoColorArmazon());
+					}
 					String frente = "Sin frente";
 					String acabadoFrente = "Sin frente";
 					String colorFrente = "Sin frente";
 					if(item.getFrente()!=null)
 					{
 						acabadoFrente = this.encryptor.decrypt(item.getAcabadoFrente().getNombre());
-						colorFrente = this.encryptor.decrypt(item.getColorFrente().getNombre());
+						if(item.getColorFrente()!=null)
+						{
+							colorFrente = this.encryptor.decrypt(item.getColorFrente().getNombre());
+						}
+						else
+						{
+							colorFrente = this.encryptor.decrypt(item.getCodigoColorFrente());
+						}
 						frente = this.encryptor.decrypt(item.getFrente().getNombre());
 					}
 					String acabadoTirador = null;
@@ -861,14 +979,28 @@ private Logger log = LogManager.getLogger();
 					if(item.getAcabadoTirador()!=null)
 					{
 						acabadoTirador = this.encryptor.decrypt(item.getAcabadoTirador().getNombre());
-						colorTirador = this.encryptor.decrypt(item.getColorTirador().getNombre());
+						if(item.getColorTirador()!=null)
+						{
+							colorTirador = this.encryptor.decrypt(item.getColorTirador().getNombre());
+						}
+						else
+						{
+							colorTirador = this.encryptor.decrypt(item.getCodigoColorTirador());
+						}
 
 					}
 					
 					if(item.getAcabadoRegleta() != null)
 					{
 						acabadoRegleta = this.encryptor.decrypt(item.getAcabadoRegleta().getNombre());
-						colorRegleta = this.encryptor.decrypt(item.getColorRegleta().getNombre());
+						if(item.getColorRegleta()!=null)
+						{
+							colorRegleta = this.encryptor.decrypt(item.getColorRegleta().getNombre());
+						}
+						else
+						{
+							colorRegleta = this.encryptor.decrypt(item.getCodigoColorTirador());
+						}
 
 				    }
 					
@@ -1257,6 +1389,23 @@ private Logger log = LogManager.getLogger();
 		
 		referenciaBulk = CPConstants.REF_DEFAULT_VALUE+"_"+this.encryptor.decrypt(usuario.getUsername())+"_"+String.valueOf(lastValue);
 		return referenciaBulk;
+	}
+	
+	private boolean evalueCodigoColor(String codigo)
+	{
+		boolean valid = false;
+		
+		String regexRal = "^(?i)RAL [0-9]{4}$|^(?i)RAL [0-9]{3}-[0-9M]$";
+		String regexNCS = "^(?i)S? ?[0-9]{2}[0-9]{2}-[A-Z][0-9]{0,2}[A-Z]?$";
+		
+		if(codigo!=null)
+		{
+			valid = codigo.matches(regexRal);
+			// En caso de que RAL coincida se salta la validación de NCS
+			valid = !valid ? codigo.matches(regexNCS) : valid;
+		}
+		
+		return valid;
 	}
 	
 }

@@ -101,7 +101,15 @@ public class OrderService
 					usuario = this.encryptor.decrypt(item.getUsuario().getUsername());
 					String referencia = item.getConfiguracion().getReferencia();
 					String armazon = this.encryptor.decrypt(item.getAcabado().getNombre());
-					String colorArmazon = this.encryptor.decrypt(item.getColorArmazon().getNombre());
+					String colorArmazon = "Sin color";
+					if(item.getCodigoColorArmazon()==null)
+					{
+						colorArmazon = this.encryptor.decrypt(item.getColorArmazon().getNombre());
+					}
+					else
+					{
+						colorArmazon = this.encryptor.decrypt(item.getCodigoColorArmazon());
+					}
 					
 					String acabadoFrente = "-";
 					String colorFrente = "-";
@@ -109,7 +117,14 @@ public class OrderService
 					if(item.getFrente()!=null)
 					{
 						acabadoFrente = this.encryptor.decrypt(item.getAcabadoFrente().getNombre());
-						colorFrente = this.encryptor.decrypt(item.getColorFrente().getNombre());
+						if(item.getColorFrente()!=null)
+						{
+							colorFrente = this.encryptor.decrypt(item.getColorFrente().getNombre());
+						}
+						else
+						{
+							colorFrente = this.encryptor.decrypt(item.getCodigoColorFrente());
+						}
 						frente = this.encryptor.decrypt(item.getFrente().getNombre());
 					}
 					
@@ -121,15 +136,27 @@ public class OrderService
 					if(item.getAcabadoTirador()!=null)
 					{
 						acabadoTirador = this.encryptor.decrypt(item.getAcabadoTirador().getNombre());
-						colorTirador = this.encryptor.decrypt(item.getColorTirador().getNombre());
-
+						if(item.getColorTirador()!=null)
+						{
+							colorTirador = this.encryptor.decrypt(item.getColorTirador().getNombre());
+						}
+						else
+						{
+							colorTirador = this.encryptor.decrypt(item.getCodigoColorTirador());
+						}
 					}
 					
 					if(item.getAcabadoRegleta() != null)
 					{
 						acabadoRegleta = this.encryptor.decrypt(item.getAcabadoRegleta().getNombre());
-						colorRegleta = this.encryptor.decrypt(item.getColorRegleta().getNombre());
-
+						if(item.getColorRegleta()!=null)
+						{
+							colorRegleta = this.encryptor.decrypt(item.getColorRegleta().getNombre());
+						}
+						else
+						{
+							colorRegleta = this.encryptor.decrypt(item.getCodigoColorTirador());
+						}
 				    }
 					
 					Float precioArmazon = item.getPrecioArmazon();
@@ -326,7 +353,15 @@ public class OrderService
 						referenciaSel = this.encryptor.decrypt(seleccion.getFrente().getReferencia()) +" "+referenciaSel;
 					}
 					String armazon = this.encryptor.decrypt(seleccion.getAcabado().getNombre());
-					String colorArmazon = this.encryptor.decrypt(seleccion.getColorArmazon().getNombre());
+					String colorArmazon = "Sin color";
+					if(seleccion.getCodigoColorArmazon()==null)
+					{
+						colorArmazon = this.encryptor.decrypt(seleccion.getColorArmazon().getNombre());
+					}
+					else
+					{
+						colorArmazon = this.encryptor.decrypt(seleccion.getCodigoColorArmazon());
+					}
 					
 					String frente = "-";
 					String acabadoFrente = "-";
@@ -334,9 +369,16 @@ public class OrderService
 					
 					if(seleccion.getFrente()!=null)
 					{
-						frente = this.encryptor.decrypt(seleccion.getFrente().getNombre());
 						acabadoFrente = this.encryptor.decrypt(seleccion.getAcabadoFrente().getNombre());
-						colorFrente = this.encryptor.decrypt(seleccion.getColorFrente().getNombre());
+						if(seleccion.getColorFrente()!=null)
+						{
+							colorFrente = this.encryptor.decrypt(seleccion.getColorFrente().getNombre());
+						}
+						else
+						{
+							colorFrente = this.encryptor.decrypt(seleccion.getCodigoColorFrente());
+						}
+						frente = this.encryptor.decrypt(seleccion.getFrente().getNombre());
 					}
 					
 					String acabadoRegleta = null;
@@ -347,13 +389,27 @@ public class OrderService
 					if(seleccion.getAcabadoRegleta()!=null)
 					{
 						acabadoRegleta = this.encryptor.decrypt(seleccion.getAcabadoRegleta().getNombre());
-						colorRegleta = this.encryptor.decrypt(seleccion.getColorRegleta().getNombre());
+						if(seleccion.getColorRegleta()!=null)
+						{
+							colorRegleta = this.encryptor.decrypt(seleccion.getColorRegleta().getNombre());
+						}
+						else
+						{
+							colorRegleta = this.encryptor.decrypt(seleccion.getCodigoColorTirador());
+						}
 					}
 					
 					if(seleccion.getAcabadoTirador()!=null)
 					{
 						acabadoTirador = this.encryptor.decrypt(seleccion.getAcabadoTirador().getNombre());
-						colorTirador = this.encryptor.decrypt(seleccion.getColorTirador().getNombre());
+						if(seleccion.getColorTirador()!=null)
+						{
+							colorTirador = this.encryptor.decrypt(seleccion.getColorTirador().getNombre());
+						}
+						else
+						{
+							colorTirador = this.encryptor.decrypt(seleccion.getCodigoColorTirador());
+						}
 					}
 					
 					// En caso de que no se hayan seleccionado medidas especiales se cogen las medidas base
