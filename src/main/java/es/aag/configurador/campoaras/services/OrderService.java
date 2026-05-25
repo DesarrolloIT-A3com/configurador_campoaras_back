@@ -479,13 +479,17 @@ public class OrderService
 		this.userRepo.flush();;
 	}
 	
-	public void actualizarEstado(EstadoPedido estado,String uuid,String rol,String seguridad,String usrToken) throws CPException
+	public void actualizarEstado(OrderDTO body,String uuid,String rol,String seguridad,String usrToken) throws CPException
 	{
-		if(estado == null) {
-			throw new CPException(400, "El estado no puede ser nulo");
+		if(body == null) 
+		{
+			throw new CPException(400, "Datos invalidos");
 		}
-		  
-		if(!rol.equals(CPConstants.ADMIN_ROLE) && rol.equals(CPConstants.SUPADMIN_ROLE))
+		
+		EstadoPedido estado = body.getEstado();
+		String referencia = null;
+		
+		if(!rol.equals(CPConstants.ADMIN_ROLE) && !rol.equals(CPConstants.SUPADMIN_ROLE))
 		{
 			if(!estado.equals(EstadoPedido.CURSADO))
 			{
@@ -503,6 +507,17 @@ public class OrderService
 				log.warn("[AVISO] -- /orders -- {} Ha intentado actualizar el estado de un pedido al valor {} el cual no es válido con permiso de {} -- {}",usrToken,estado,rol,seguridad);
 				throw new CPException(400,"Datos invalidos");
 			}
+			
+			// Los administradores puede actualizar la referencia del pedido
+			referencia = body.getReferencia();
+			
+			if(referencia!=null)
+			{
+				if(!referencia.isBlank())
+				{
+					referencia = this.encryptor.encrypt(referencia);
+				}
+			}
 		}
 		
 		Optional<Pedido> pedidoOpt = this.pedidoRepo.findById(uuid);
@@ -516,6 +531,11 @@ public class OrderService
 		Pedido pedido = pedidoOpt.get();
 		
 		pedido.setEstado(estado);
+		
+		if(referencia!=null)
+		{
+			pedido.setReferencia(referencia);
+		}
 		
 		log.info("[ACCION] -- /orders -- {} Ha actualizado el estado del pedido {} a {} con permiso de {} -- {}",usrToken,pedido.getUuid(),estado,rol,seguridad);
 		

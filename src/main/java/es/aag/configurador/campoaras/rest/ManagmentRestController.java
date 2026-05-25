@@ -1039,7 +1039,7 @@ public class ManagmentRestController
 			
 			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/orders", usuario.getUSRToken());
 			
-			this.orderService.actualizarEstado(body.getEstado(), uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			this.orderService.actualizarEstado(body, uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
 			return ResponseEntity.status(201).build();
 		}
