@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import es.aag.configurador.campoaras.dto.OrderDTO;
 import es.aag.configurador.campoaras.dto.ResponseSeleccion;
@@ -256,4 +258,41 @@ public class GeneralRestController
 		}
 		
 	}
+	
+	@RequestMapping(method = RequestMethod.POST,value = "/order-proposal/send",consumes="multipart/form-data")
+	public ResponseEntity<?> sendOrder(@RequestPart(name="pdf",required = true) final MultipartFile img,
+									   @RequestPart(name="uuid",required = true) final String uuid,
+									   HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/order-proposal", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/order-proposal", usuario.getUSRToken());
+			
+			this.security.validatePdf(img, "/order-proposal/send", usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+
+			this.orderService.sendPedido(img, usuario, uuid, seguridad);
+			
+			return ResponseEntity.ok().build();
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+						
+			log.error("[ERROR] -- /order-proposal/send -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+
+		}
+	}
+	
 }

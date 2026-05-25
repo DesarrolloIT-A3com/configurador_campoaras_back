@@ -1,5 +1,6 @@
 package es.aag.configurador.campoaras.services;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -13,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import es.aag.configurador.campoaras.dto.OrderDTO;
 import es.aag.configurador.campoaras.dto.ResponseSeleccion;
@@ -36,6 +38,9 @@ public class OrderService
 	
 	@Autowired
 	private EncryptorService encryptor;
+	
+	@Autowired
+	private MailService mailService;
 	
 	@Autowired
 	private IUsuarioRepository userRepo;
@@ -523,6 +528,41 @@ public class OrderService
 		
 		this.userRepo.save(userPedido);
 		this.userRepo.flush();
+	}
+	
+	public void sendPedido(MultipartFile file,Usuario usuario,String uuid,String seguridad) throws CPException
+	{
+		Optional<Pedido> optPedido = this.pedidoRepo.findById(uuid);
+		
+		if(!optPedido.isPresent())
+		{
+			log.warn("[AVISO] -- /order-proposal/send -- {} Ha tratado de mandar un pedido inexistente con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+			throw new CPException(400,"Datos inválidos");
+		}
+		
+		Pedido pedido = optPedido.get();
+		
+		String referencia = this.encryptor.decrypt(pedido.getReferencia());
+		String username = this.encryptor.decrypt(usuario.getUsername());
+		
+		byte [] pdfBytes = null;
+		
+		try
+		{
+			pdfBytes = file.getBytes();
+		}
+		catch(IOException ex)
+		{
+			log.warn("[AVISO] -- /order-proposal/send -- {} Ha introducido un pdf corrupto debido a que no se puede transformar a byte[] con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+			throw new CPException(400,"Datos inválidos");
+		}
+		
+		this.mailService.sendOrderMail(pdfBytes, username, referencia, pedido.getFecha(), "desarrolloit@a3com.es", usuario.getUSRToken(), seguridad);
+		
+		log.info("[ACCION -- /order-proposal/send -- {} Ha enviado el pedido {} correctamente a fábrica con permiso de {} -- {}",usuario.getUSRToken(),uuid,usuario.getRol().getNombre(),seguridad);
+		
+		pedido.setEstado(EstadoPedido.CURSADO);
+		this.pedidoRepo.save(pedido);
 	}
 	
 }

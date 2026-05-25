@@ -1,6 +1,9 @@
 package es.aag.configurador.campoaras.services;
 
 import java.io.UnsupportedEncodingException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,6 +16,7 @@ import org.springframework.stereotype.Service;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
 import jakarta.mail.MessagingException;
+import jakarta.mail.util.ByteArrayDataSource;
 
 /**
  * Servicio encargado de enviar correos a nombre del correo de administración o destinado para la app, los html se guardan en método
@@ -217,7 +221,7 @@ public class MailService
 		{
 			log.error("[ERROR] No se ha podido enviar el mensaje de correo a {} - {} - causa {}",usrToken,seguridad,exception);
 			log.error("[DETAILS] {}",exception.getMessage());
-			throw new CPException(500,"Error interno del servidor, problemas al enviar mail",exception);
+			throw new CPException(500,"Error interno del servidor, problemas al enviar mail");
 		}
 	}
 	
@@ -403,7 +407,58 @@ public class MailService
 		{
 			log.error("[ERROR] No se ha podido enviar el mensaje de correo a {} - {}",usrToken,seguridad);
 			log.error("[DETAILS] {}",exception.getMessage());
-			throw new CPException(500,"Error interno del servidor, problemas al enviar mail",exception);
+			throw new CPException(500,"Error interno del servidor, problemas al enviar mail");
+		}
+	}
+	
+	public void sendOrderMail(byte [] file,String username,String referencia,LocalDateTime fecha,String receiver,String usrToken,String seguridad) throws CPException
+	{
+		String subject = "Pedido "+referencia+" entrante";
+		String htmlContent = "<!DOCTYPE html>\n" +
+			    "<html lang=\"en\">\n" +
+			    "<head>\n" +
+			    "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n" +
+			    "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
+			    "    <title>Mail</title>\n" +
+			    "</head>\n" +
+			    "<body>\n" +
+			    "    <h2>La tienda %s ha enviado el pedido con referencia %s.</h2>\n" +
+			    "    <h3>El pedido se ha creado en la fecha %s y se ha enviado hoy %s.</h3>\n" +
+			    "    <h3>El pedido posee 45 días de validez siendo la fecha límite %s.</h3>\n" +
+			    "    <h3>Se ha adjuntado un archivo PDF con los detalles del pedido.</h3>\n" +
+			    "</body>\n" +
+			    "</html>";
+		
+		Locale localeEs = Locale.of("es","ES");
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM 'de' yyyy", localeEs);
+		String fechaPedido = fecha.format(formatter);
+		String now = LocalDateTime.now().format(formatter);
+		String validez = fecha.plusDays(45).format(formatter);
+		
+		htmlContent = String.format(htmlContent, username,referencia,fechaPedido,now,validez);
+		
+		try
+		{
+			var mimeMessage = javaMailSender.createMimeMessage();
+			MimeMessageHelper helper = new MimeMessageHelper(mimeMessage,MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,"UTF-8");
+			
+			helper.setFrom(this.sender,"Campoaras");
+			helper.setTo(receiver);
+			helper.setSubject(subject);
+			helper.setText(htmlContent,true);
+			
+			// Se adjunta el PDF
+			ByteArrayDataSource dataSource = new ByteArrayDataSource(file,"application/pdf");
+			helper.addAttachment("pedido_"+referencia+".pdf", dataSource);
+			this.javaMailSender.send(mimeMessage);
+			
+			log.info("[ADMIN] -- /order-proposal/send -- Mensaje mandado a fabrica correctamente -- {}",seguridad);
+		}
+		catch(MailException | MessagingException |  UnsupportedEncodingException exception)
+		{
+			log.error("[ERROR] -- /order-proposal/send -- No se ha podido enviar el pedido del usuario {} a fabrica - {}",usrToken,seguridad);
+			log.error("[DETAILS] {}",exception.getMessage());
+			throw new CPException(500,"Error interno del servidor, problemas al enviar mail");
 		}
 	}
 }
