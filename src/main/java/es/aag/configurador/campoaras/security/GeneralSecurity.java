@@ -271,5 +271,70 @@ public class GeneralSecurity
 		}
 	}
 	
+	public void validatePdf(MultipartFile file,String endpoint,String rol,String seguridad,String userToken) throws CPException
+	{
+		// FIRMA PDF
+		final byte [] PDF_MAGIC = {(byte)0x25,(byte)0x50,(byte)0x44,(byte) 0x46,(byte)0x2D};
+		
+		final String ALLOWED_MIME_TYPE = "application/pdf";
+		
+		final long MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+		
+		if(file.isEmpty())
+		{
+			log.warn("[AVISO] -- {} -- {} Ha introducido un fichero vacío con permiso de {} -- {}",endpoint,userToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		if(file.getSize() > MAX_SIZE_BYTES)
+		{
+			long size = file.getSize() / 1024 / 1024;
+			log.warn("[AVISO] -- {} -- {} Ha introducido un fichero que supera los 5MB de tamaño siendo de tamaño {} MB con permiso de {} -- {}",endpoint,userToken,size,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		String declaredMime = file.getContentType();
+		
+		if(declaredMime == null || !ALLOWED_MIME_TYPE.equals(declaredMime))
+		{
+			log.warn("[AVISO] -- {} -- {} Ha introducido un fichero no permitido con un MIME {} que no es pdf con permiso de {} -- {}",endpoint,userToken,declaredMime,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		boolean isPdf = false;
+		
+		try
+		{
+			InputStream is = file.getInputStream();
+			byte[] header = is.readNBytes(5);
+			
+			
+			// Comprobación de las cabeceras del fichero, deben de coincidir con el magic number de un PNG si no coincide da false
+			isPdf = header.length >= 5
+					&& header[0] == PDF_MAGIC[0] && header[1] == PDF_MAGIC[1]
+					&& header[2] == PDF_MAGIC[2] && header[3] == PDF_MAGIC[3]
+					&& header[4] == PDF_MAGIC[4];
+			
+
+		}
+		catch(IOException ex)
+		{
+			log.error("[ERROR] -- {} -- {} Ha saltado un error IOException al leer los bytes del fichero -- {}",endpoint,userToken,seguridad);
+			isPdf = false;
+		}
+		catch(IndexOutOfBoundsException ex)
+		{
+			log.warn("[ERROR] -- {} -- {} Ha saltado un error IndexOutOfBoundsException debido a que el fichero no posee el número de bytes necesario (5) para la validación de un magic number -- {}",endpoint,userToken,seguridad);
+			isPdf = false;
+		}
+		
+		if(!isPdf)
+		{
+			log.warn("[AVISO] -- {} -- {} Ha introducido un fichero que no es un pdf con permiso de {} -- {}",endpoint,userToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+	}
+	
 	
 }
