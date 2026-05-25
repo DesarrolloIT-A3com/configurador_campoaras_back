@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
@@ -1395,14 +1396,14 @@ private Logger log = LogManager.getLogger();
 	{
 		boolean valid = false;
 		
-		String regexRal = "^(?i)RAL [0-9]{4}$|^(?i)RAL [0-9]{3}-[0-9M]$";
-		String regexNCS = "^(?i)S? ?[0-9]{2}[0-9]{2}-[A-Z][0-9]{0,2}[A-Z]?$";
+		Pattern RAL_Pattern = Pattern.compile("^(?i)RAL [0-9]{4}$|^(?i)RAL [0-9]{3}-[0-9M]$", Pattern.CASE_INSENSITIVE);
+		Pattern NCS_Pattern = Pattern.compile("^NCS\\s+S\\s+([0-9]{4})-([A-Z])([0-9]{0,2})([A-Z]?)$", Pattern.CASE_INSENSITIVE);
 		
 		if(codigo!=null)
 		{
-			valid = codigo.matches(regexRal);
+			valid = RAL_Pattern.matcher(codigo).matches();
 			// En caso de que RAL coincida se salta la validación de NCS
-			valid = !valid ? codigo.matches(regexNCS) : valid;
+			valid = !valid ? NCS_Pattern.matcher(codigo).matches() : valid;
 		}
 		
 		return valid;

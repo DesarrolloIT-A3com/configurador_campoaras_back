@@ -77,6 +77,10 @@ public final class CPConstants
     public static final String MAP_DEFAULT_VALUE = "CP-novalue";
     public static final String REF_DEFAULT_VALUE = "PEDIENTE";
     public static final String CODIGO_VALUE = "codigo";
+    public static final String RAL_VALUE = "RAL";
+    public static final String NCS_VALUE = "NCS";
+    public static final String URL_RAL = "https://coloresral.com.es/buscar-color-ral";
+    public static final String URL_NCS = "https://coloresncs.es/buscar-color-ncs";
     
     // Se usan para métodos que soporten distintos metodos HTTP ejemplo manageProducts en ManagmentService
     

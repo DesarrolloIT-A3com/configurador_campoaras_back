@@ -1,9 +1,17 @@
 package es.aag.configurador.campoaras.rest;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -289,6 +297,108 @@ public class GeneralRestController
 			String seguridad = this.security.getIpInfo(ip, request);
 						
 			log.error("[ERROR] -- /order-proposal/send -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.GET,value = "/scrapping/color",produces = "application/json")
+	public ResponseEntity<?> getColor(@RequestParam(value="code",required=true)final String code,
+									  @RequestParam(value="type",required=true)final String type,
+									  HttpServletRequest request,Authentication authentication)
+	
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/order-proposal", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/order-proposal", usuario.getUSRToken());
+			
+			String color = null;
+			String url = "";
+			
+			if(type.equals(CPConstants.RAL_VALUE))
+			{
+				url = CPConstants.URL_RAL+"?q=" + URLEncoder.encode(code,StandardCharsets.UTF_8);
+			}
+			else if(type.equals(CPConstants.NCS_VALUE))
+			{
+				url = CPConstants.URL_NCS+"?q=" + URLEncoder.encode(code,StandardCharsets.UTF_8);
+			}
+			else
+			{
+				log.warn("[AVISO] -- /scrapping/color -- {} Ha introducido datos invalidos para obtener el color pedido con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+				throw new CPException(400,"Datos invalidos");
+			}
+			
+			Document doc = Jsoup.connect(url)
+					.userAgent("Mozzilla/5.0")
+					.timeout(10000)
+					.get();
+			
+			Elements colores = doc.select(".colors");
+			
+			if(colores.size()>0)
+			{
+				for(Element item:colores)
+				{
+					Element ul = item.getElementsByTag("ul").get(0);
+					
+					Elements listItem = ul.getElementsByTag("li");
+					
+					for(Element li:listItem)
+					{
+						Element liChild = li.getElementsByTag("a").get(0);
+						
+						String valor = liChild.text();
+													
+						if(valor.equals(type+" "+code))
+						{
+							String styles = liChild.attr("style");
+							String[] propiedades = styles.split(";");
+							
+							for(String style:propiedades)
+							{
+								if(style.trim().split(":")[0].equals("background-color"))
+								{
+									color = style.trim().split(":")[1];
+									break;
+								}
+							}
+						}
+						
+						if(color!=null)
+						{
+							break;
+						}
+					}
+					
+					if(color!=null)
+					{
+						break;
+					}
+				}
+			}
+			
+			Map<String,String> response = new HashMap<String, String>();
+			response.put("color", color);
+			
+			return ResponseEntity.ok().body(response);
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+						
+			log.error("[ERROR] -- /scrapping/color -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
 			log.error("[DETAILS]",ex);
 			return ResponseEntity.status(500).body("Error interno de servidor");		
 
