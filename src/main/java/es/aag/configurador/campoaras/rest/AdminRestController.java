@@ -1,6 +1,7 @@
 package es.aag.configurador.campoaras.rest;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -215,9 +216,69 @@ public class AdminRestController
 			String ip = this.security.getClientIPAddress(request);
 			String seguridad = this.security.getIpInfo(ip, request);
 			
-			log.error("[ERROR] -- /del-user -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[ERROR] -- /upt-user -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
 			log.error("[DETAILS]",ex);
 			return ResponseEntity.status(500).body("Error interno de servidor");		
 		}
 	}
+	
+	@RequestMapping(method = RequestMethod.POST,value = "/verificate-action",consumes="application/json")
+	public ResponseEntity<?> verificateAction(@RequestBody(required = true)Map<String,String> body,
+			HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/verificate-action", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/verificate", usuario.getUSRToken());
+			
+			this.adminService.sendCode(body, usuario, seguridad);
+			
+			return ResponseEntity.status(204).build();
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /verificate-action -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
+	
+//	@RequestMapping(method = RequestMethod.POST,value = "/export-data/{verCode}",produces = "application/json")
+//	public ResponseEntity<?> exportJson(@RequestBody(required = true) Map<String,String> body,
+//			HttpServletRequest request,Authentication authentication)
+//	{
+//		try
+//		{
+//			String ip = this.security.getClientIPAddress(request);
+//			String seguridad = this.security.getIpInfo(ip, request);
+//			
+//			Usuario usuario = this.security.isAuth(userRepo, "/export-data", seguridad);
+//			
+//			
+//		}
+//		catch(CPException ex)
+//		{
+//			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+//		}
+//		catch(Exception ex)
+//		{
+//			String ip = this.security.getClientIPAddress(request);
+//			String seguridad = this.security.getIpInfo(ip, request);
+//			
+//			log.error("[ERROR] -- /export-data -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+//			log.error("[DETAILS]",ex);
+//			return ResponseEntity.status(500).body("Error interno de servidor");		
+//		}
+//	}
 }

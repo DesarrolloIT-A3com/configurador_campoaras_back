@@ -1,17 +1,35 @@
 package es.aag.configurador.campoaras.services;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import es.aag.configurador.campoaras.dto.UserGetDTO;
+import es.aag.configurador.campoaras.entities.Acabado;
+import es.aag.configurador.campoaras.entities.AdminVerification;
+import es.aag.configurador.campoaras.entities.Color;
+import es.aag.configurador.campoaras.entities.Producto;
 import es.aag.configurador.campoaras.entities.Usuario;
+import es.aag.configurador.campoaras.repositories.IAcabadoRepository;
+import es.aag.configurador.campoaras.repositories.IAdminVerificationRepository;
+import es.aag.configurador.campoaras.repositories.IColorRepository;
+import es.aag.configurador.campoaras.repositories.IConfiguracionRepository;
+import es.aag.configurador.campoaras.repositories.IFrenteRepository;
+import es.aag.configurador.campoaras.repositories.IProductoRepository;
 import es.aag.configurador.campoaras.repositories.IRolRepository;
+import es.aag.configurador.campoaras.repositories.ISerieRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
@@ -33,7 +51,36 @@ public class AdminService
 	private IRolRepository rolRepo;
 	
 	@Autowired
+	private IAdminVerificationRepository verRepo;
+	
+	@Autowired
+	private MailService mail;
+	
+	@Autowired
 	private EncryptorService encryptor;
+	
+	@Autowired
+	private IProductoRepository productoRepo;
+	
+	@Autowired
+	private ISerieRepository serieRepo;
+	
+	@Autowired
+	private IConfiguracionRepository configRepo;
+	
+	@Autowired
+	private IAcabadoRepository acabadoRepo;
+	
+	@Autowired
+	private IColorRepository colorRepo;
+	
+	@Autowired
+	private IFrenteRepository frenteRepo;
+	
+	
+	
+	@Autowired
+	private PasswordEncoder encoder;
 	
 
 	public AdminService()
@@ -244,4 +291,131 @@ public class AdminService
 		
 		this.userRepo.save(usuario);		
 	}
+	
+	public void sendCode(Map<String,String> body,Usuario usuario,String seguridad) throws CPException
+	{
+		String email = this.encryptor.decrypt(usuario.getEmail());
+		String username = this.encryptor.decrypt(usuario.getUsername());
+		
+		String password = body.get("password");
+		
+		if(password==null)
+		{
+			log.warn("[AVISO] -- /verificate-action -- {} Ha intentado realizar un accion de {} introduciendo una contraseña nula con permiso de {} -- {}",usuario.getUSRToken(),CPConstants.SUPADMIN_ROLE,usuario.getRol().getNombre(),seguridad);
+			throw new CPException(403,"No tienes permiso");
+		}
+		
+		if(!this.encoder.matches(password, usuario.getPassword()))
+		{
+			log.warn("[AVISO] -- /verificate-action -- {} Ha intentado realizar un accion de {} introduciendo una contraseña incorrecta con permiso de {} -- {}",usuario.getUSRToken(),CPConstants.SUPADMIN_ROLE,usuario.getRol().getNombre(),seguridad);
+			throw new CPException(403,"No tienes permiso");
+		}
+		
+		AdminVerification verification = new AdminVerification();
+		
+		// Generacion de código de verificacion
+		byte[] salt = new byte[8]; // CODIGO DE 8 BYTES
+		new SecureRandom().nextBytes(salt);
+		String saltBase64 = Base64.getUrlEncoder().withoutPadding().encodeToString(salt);
+		
+		// Generacion de fecga de caducidad 
+		LocalDateTime endCode = LocalDateTime.now();
+		endCode = endCode.plusMinutes(5);
+		
+		String uuid = UUID.randomUUID().toString();
+		
+		verification.setUuid(uuid);
+		verification.setAdminUuid(usuario.getUuid());
+		verification.setVerCode(this.encoder.encode(saltBase64));
+		verification.setEndVerCode(endCode);
+		
+		this.verRepo.save(verification);
+		this.verRepo.flush();
+		
+		this.mail.sendMailAdminVerification(username, email, usuario.getUSRToken(), seguridad, saltBase64);
+		
+		log.info("[ADMIN] -- /verificate-action -- {} Ha solicitado una accion de {} con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+	
+	}
+	
+//	public List<Map<String,Object>> exportData(String uuid,String verCode,String rol,String seguridad,String usrToken) throws CPException
+//	{
+//		List<AdminVerification> verificaciones = this.verRepo.findByAdminUuid(uuid);
+//		
+//		AdminVerification found = null;
+//		
+//		for(AdminVerification item:verificaciones)
+//		{
+//			LocalDateTime now = LocalDateTime.now();
+//			
+//			if(!now.isAfter(item.getEndVerCode()))
+//			{
+//				if(this.encoder.matches(verCode, item.getVerCode()))
+//				{
+//					found = item;
+//				}
+//			}
+//		}
+//		
+//		if(found == null)
+//		{
+//			log.warn("[AVISO] -- /export-data -- {} Ha introducido un código de verificacion erroneo para exportar la base de datos con permiso de {} -- {}");
+//			throw new CPException(403,"No tienes permiso");
+//		}
+//		
+//		this.verRepo.deleteAll(verificaciones);
+//		this.verRepo.flush();
+//		
+//		List<Map<String,Object>> response = new LinkedList<Map<String,Object>>();
+//		
+//		// Extracción de acabados
+//		for(Acabado acabado:this.acabadoRepo.findAll())
+//		{
+//			Map<String,Object> item = new HashMap<String, Object>();
+//			item.put("entidad", "acabado");
+//			item.put("uuid", acabado.getUuid());
+//			item.put("nombre", this.encryptor.decrypt(acabado.getNombre()));
+//			
+//			String[] tipos = acabado.getTipos();
+//			
+//			for(int i = 0;i<tipos.length;i++)
+//			{
+//				tipos[i] = this.encryptor.decrypt(tipos[i]);
+//			}
+//			
+//			item.put("tipos", tipos);
+//			response.add(item);
+//		}
+//		
+//		//Extraccion de colores
+//		for(Color color:this.colorRepo.findAll())
+//		{
+//			Map<String,Object> item = new HashMap<String, Object>();
+//			item.put("entidad", "color");
+//			item.put("uuid", color.getUuid());
+//			item.put("nombre", this.encryptor.decrypt(color.getNombre()));
+//			
+//			List<String> acabados = new LinkedList<String>();
+//			for(Acabado acabado:color.getAcabados())
+//			{
+//				acabados.add(acabado.getUuid());
+//			}
+//			
+//			item.put("acabados", acabados);
+//			
+//		}
+//		
+//		// Extraccion de productos
+//		for(Producto producto:this.productoRepo.findAll())
+//		{
+//			Map<String,Object> item = new HashMap<String, Object>();
+//			item.put("entidad", "producto");
+//			item.put("uuid", producto.getUuid());
+//			item.put("nombre", this.encryptor.decrypt(producto.getNombre()));
+//			item.put("tipo", this.encryptor.decrypt(producto.getTipo()));
+//			item.put("cajon", producto.getCajon()!=null ? this.encryptor.decrypt(producto.getCajon()) : null);
+//		}
+//		
+//		
+//	}
 }

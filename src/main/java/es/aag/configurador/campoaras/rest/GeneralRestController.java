@@ -314,7 +314,7 @@ public class GeneralRestController
 			String ip = this.security.getClientIPAddress(request);
 			String seguridad = this.security.getIpInfo(ip, request);
 			
-			Usuario usuario = this.security.isAuth(userRepo, "/order-proposal", seguridad);
+			Usuario usuario = this.security.isAuth(userRepo, "/scrapping/color", seguridad);
 			
 			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/order-proposal", usuario.getUSRToken());
 			

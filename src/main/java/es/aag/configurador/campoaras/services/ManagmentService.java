@@ -1146,9 +1146,12 @@ public class ManagmentService
 				for(ProductoConfigurado seleccion:allSelecciones)
 				{
 					boolean delete = false;
-					if(seleccion.getColorArmazon().equals(toDelete))
+					if(seleccion.getColorArmazon()!=null)
 					{
-						delete = true;
+						if(seleccion.getColorArmazon().equals(toDelete))
+						{
+							delete = true;
+						}
 					}
 					
 					if(seleccion.getFrente()!=null)
