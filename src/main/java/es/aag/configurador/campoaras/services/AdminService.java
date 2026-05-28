@@ -581,12 +581,11 @@ public class AdminService
 		this.verRepo.flush();
 	
 		List<Map<String, Object>> jsonList = null;
-
+		
+		ObjectMapper objectMapper = new ObjectMapper();
 		try
 		{
 		    byte[] content = json.getInputStream().readAllBytes();
-
-		    ObjectMapper objectMapper = new ObjectMapper();
 
 		    jsonList = objectMapper.readValue(content, new TypeReference<List<Map<String, Object>>>() {});
 		}
@@ -622,7 +621,7 @@ public class AdminService
 	    	{
 	    		String uuidItem = (String) item.get("uuid");
 	    		String nombre = (String) item.get("nombre");
-	    		String tipos[] = (String[]) item.get("tipos");
+	    		String tipos[] = objectMapper.convertValue(item.get("tipos"), String[].class);
 	    		
 	    		nombre = this.encryptor.encrypt(nombre);
 	    		
@@ -654,7 +653,7 @@ public class AdminService
 	    		String uuidItem = (String) item.get("uuid");
 	    		String nombre = (String) item.get("nombre");
 	    		
-	    		String[] acabadosItem = (String[]) item.get("acabados");
+	    		String[] acabadosItem = objectMapper.convertValue(item.get("acabados"), String[].class);
 	    		
 	    		Color color = new Color();
 	    		color.setUuid(uuidItem);
@@ -797,9 +796,9 @@ public class AdminService
 	            Boolean tirador = (Boolean) item.get("tirador");
 	            
 	            // Listas de UUIDs que vienen en el JSON
-	            String[] acabadosUuids = (String[]) item.get("acabados");
-	            String[] acabadosExtensionUuids = (String[]) item.get("acabadosExtension");
-	            String[] productosUuids = (String[]) item.get("productos");
+	            String[] acabadosUuids = objectMapper.convertValue(item.get("acabados"), String[].class);;
+	            String[] acabadosExtensionUuids = objectMapper.convertValue(item.get("acabadosExtension"), String[].class);;
+	            String[] productosUuids = objectMapper.convertValue(item.get("productos"), String[].class);;
 	            
 	            // Encriptar campos de texto
 	            nombre = this.encryptor.encrypt(nombre);
@@ -918,7 +917,10 @@ public class AdminService
 	            }
 	            
 	            // Procesar armazones (List<Map<String,Object>>)
-	            List<Map<String,Object>> armazonesList = (List<Map<String,Object>>) item.get("armazon");
+	            List<Map<String,Object>> armazonesList = objectMapper.convertValue(
+	            	    item.get("armazon"),
+	            	    new TypeReference<List<Map<String, Object>>>() {}
+	            	);
 	            if(armazonesList != null && !armazonesList.isEmpty())
 	            {
 	                List<Map<String,Object>> armazonesProcesados = new ArrayList<>();
@@ -949,7 +951,10 @@ public class AdminService
 	            }
 	            
 	            // Procesar extras (List<Map<String,Object>>)
-	            List<Map<String,Object>> extrasList = (List<Map<String,Object>>) item.get("extras");
+	            List<Map<String,Object>> extrasList = objectMapper.convertValue(
+	            	    item.get("extras"),
+	            	    new TypeReference<List<Map<String, Object>>>() {}
+	            	);
 	            if(extrasList != null && !extrasList.isEmpty())
 	            {
 	                List<Map<String,Object>> extrasProcesados = new ArrayList<>();
