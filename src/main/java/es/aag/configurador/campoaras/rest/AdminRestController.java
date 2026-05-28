@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -270,6 +272,9 @@ public class AdminRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/export-data", seguridad);
 			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/export-data", usuario.getUSRToken());
+			
+			
 			String verCode = body.get("codigo");
 			
 			List<Map<String,Object>> json = this.adminService.exportData(usuario.getUuid(), verCode, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
@@ -299,4 +304,43 @@ public class AdminRestController
 			return ResponseEntity.status(500).body("Error interno de servidor");		
 		}
 	}
+	
+	@RequestMapping(method = RequestMethod.POST,value = "/import-data",consumes = "multipart/form-data")
+	public ResponseEntity<?> importData(@RequestPart(value = "code",required = true)Map<String,String> body,
+										@RequestPart(value = "productos",required = true)MultipartFile json,
+										HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/export-data", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/export-data", usuario.getUSRToken());
+			
+			this.security.validateJson(json, "/import-data", usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			String verCode = body.get("codigo");
+			
+			this.adminService.importData(json, usuario.getUuid(), verCode, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.ok().build();
+			
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /export-data -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
 }
+

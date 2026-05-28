@@ -336,5 +336,81 @@ public class GeneralSecurity
 		
 	}
 	
+	public void validateJson(MultipartFile file, String endpoint, String rol, String seguridad, String userToken) throws CPException
+	{
+	    // FIRMA JSON ('{' o '[' como primer byte válido)
+	    final byte OPEN_BRACE  = (byte) 0x7B; // '{'
+	    final byte OPEN_BRACKET = (byte) 0x5B; // '['
+
+	    final String ALLOWED_MIME_TYPE = "application/json";
+
+	    final long MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+	    if (file.isEmpty())
+	    {
+	        log.warn("[AVISO] -- {} -- {} Ha introducido un fichero vacío con permiso de {} -- {}", endpoint, userToken, rol, seguridad);
+	        throw new CPException(400, "Datos invalidos");
+	    }
+
+	    if (file.getSize() > MAX_SIZE_BYTES)
+	    {
+	        long size = file.getSize() / 1024 / 1024;
+	        log.warn("[AVISO] -- {} -- {} Ha introducido un fichero que supera los 5MB de tamaño siendo de tamaño {} MB con permiso de {} -- {}", endpoint, userToken, size, rol, seguridad);
+	        throw new CPException(400, "Datos invalidos");
+	    }
+
+	    String declaredMime = file.getContentType();
+
+	    if (declaredMime == null || !ALLOWED_MIME_TYPE.equals(declaredMime))
+	    {
+	        log.warn("[AVISO] -- {} -- {} Ha introducido un fichero no permitido con un MIME {} que no es json con permiso de {} -- {}", endpoint, userToken, declaredMime, rol, seguridad);
+	        throw new CPException(400, "Datos invalidos");
+	    }
+
+	    boolean isJson = false;
+
+	    try
+	    {
+	        InputStream is = file.getInputStream();
+	        byte[] header = is.readNBytes(1);
+
+	        // Comprobación del primer byte del fichero, debe ser '{' (objeto) o '[' (array)
+	        // ya que son los únicos inicios válidos para un JSON bien formado
+	        isJson = header.length >= 1
+	                && (header[0] == OPEN_BRACE || header[0] == OPEN_BRACKET);
+
+	        // Si el magic number es correcto, validamos que el contenido sea JSON parseable
+	        if (isJson)
+	        {
+	            try
+	            {
+	                byte[] content = file.getInputStream().readAllBytes();
+	                new com.fasterxml.jackson.databind.ObjectMapper().readTree(content);
+	            }
+	            catch (com.fasterxml.jackson.core.JsonProcessingException ex)
+	            {
+	                log.warn("[AVISO] -- {} -- {} Ha introducido un fichero cuyo contenido no es un JSON válido con permiso de {} -- {}", endpoint, userToken, rol, seguridad);
+	                isJson = false;
+	            }
+	        }
+	    }
+	    catch (IOException ex)
+	    {
+	        log.error("[ERROR] -- {} -- {} Ha saltado un error IOException al leer los bytes del fichero -- {}", endpoint, userToken, seguridad);
+	        isJson = false;
+	    }
+	    catch (IndexOutOfBoundsException ex)
+	    {
+	        log.warn("[ERROR] -- {} -- {} Ha saltado un error IndexOutOfBoundsException debido a que el fichero no posee el número de bytes necesario (1) para la validación del magic number -- {}", endpoint, userToken, seguridad);
+	        isJson = false;
+	    }
+
+	    if (!isJson)
+	    {
+	        log.warn("[AVISO] -- {} -- {} Ha introducido un fichero que no es un json con permiso de {} -- {}", endpoint, userToken, rol, seguridad);
+	        throw new CPException(400, "Datos invalidos");
+	    }
+	}
+	
 	
 }

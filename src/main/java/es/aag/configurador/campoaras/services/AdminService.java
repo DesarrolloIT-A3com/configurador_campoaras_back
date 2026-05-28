@@ -1,7 +1,9 @@
 package es.aag.configurador.campoaras.services;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -15,6 +17,12 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import es.aag.configurador.campoaras.dto.UserGetDTO;
 import es.aag.configurador.campoaras.entities.Acabado;
@@ -536,8 +544,448 @@ public class AdminService
 		
 		validation.destroy();
 		
-		log.info("[ACCION] -- /export-data -- {} Ha solicitado una exportación de los productos de la base de datos con permiso de {} -- {}",usrToken,rol,seguridad);
+		log.info("[ADMIN] -- /export-data -- {} Ha solicitado una exportación de los productos de la base de datos con permiso de {} -- {}",usrToken,rol,seguridad);
 		
 		return response;
+	}
+	
+	
+	public void importData(MultipartFile json,String uuid,String verCode,String rol,String seguridad,String usrToken) throws CPException
+	{
+		List<AdminVerification> verificaciones = this.verRepo.findByAdminUuid(uuid);
+		
+		validation.initialize(null, null, this.acabadoRepo, null, null, null, this.encryptor);
+		
+		AdminVerification found = null;
+		
+		for(AdminVerification item:verificaciones)
+		{
+			LocalDateTime now = LocalDateTime.now();
+			
+			if(!now.isAfter(item.getEndVerCode()))
+			{
+				if(this.encoder.matches(verCode, item.getVerCode()))
+				{
+					found = item;
+				}
+			}
+		}
+		
+		if(found == null)
+		{
+			log.warn("[AVISO] -- /export-data -- {} Ha introducido un código de verificacion erroneo para exportar la base de datos con permiso de {} -- {}");
+			throw new CPException(403,"No tienes permiso");
+		}
+		
+		this.verRepo.deleteAll(verificaciones);
+		this.verRepo.flush();
+	
+		List<Map<String, Object>> jsonList = null;
+
+		try
+		{
+		    byte[] content = json.getInputStream().readAllBytes();
+
+		    ObjectMapper objectMapper = new ObjectMapper();
+
+		    jsonList = objectMapper.readValue(content, new TypeReference<List<Map<String, Object>>>() {});
+		}
+		catch (JsonParseException ex)
+		{
+		    log.error("[ERROR] -- /import-data -- {} Ha saltado un error JsonParseException al parsear el contenido del fichero JSON -- {}", usrToken, seguridad);
+		    throw new CPException(400, "Datos invalidos");
+		}
+		catch (JsonMappingException ex)
+		{
+		    log.error("[ERROR] -- /import-data -- {} Ha saltado un error JsonMappingException al mapear el contenido del fichero JSON a List<Map<String,Object>> -- {}", usrToken, seguridad);
+		    throw new CPException(400, "Datos invalidos");
+		}
+		catch (IOException ex)
+		{
+		    log.error("[ERROR] -- /import-data -- {} Ha saltado un error IOException al leer los bytes del fichero -- {}", usrToken, seguridad);
+		    throw new CPException(500, "Error interno");
+		}
+	    
+	    if(jsonList==null)
+	    {
+	    	log.warn("[AVISO] -- /import-data -- {} Ha introducido un json inválido resultando en un objeto nulo con permiso de {} -- {}",usrToken,rol,seguridad);
+	    	throw new CPException(400,"Datos inválidos");
+	    }
+	    
+	    // IMPORTACION DE ACABADOS
+	    
+	    List<Acabado> acabados = new LinkedList<Acabado>();
+	    
+	    for(Map<String,Object> item:jsonList)
+	    {
+	    	if(item.get("entidad").equals("acabado"))
+	    	{
+	    		String uuidItem = (String) item.get("uuid");
+	    		String nombre = (String) item.get("nombre");
+	    		String tipos[] = (String[]) item.get("tipos");
+	    		
+	    		nombre = this.encryptor.encrypt(nombre);
+	    		
+	    		for(int i = 0;i<tipos.length;i++)
+	    		{
+	    			tipos[i] = this.encryptor.encrypt(tipos[i]);
+	    		}
+	    		
+	    		Acabado acabado = new Acabado();
+	    		acabado.setUuid(uuidItem);
+	    		acabado.setNombre(this.encryptor.encrypt(nombre));
+	    		acabado.setTipos(tipos);
+	    		acabados.add(acabado);
+	    	}
+	    	
+	    	
+	    }
+	    this.acabadoRepo.saveAll(acabados);
+	    this.acabadoRepo.flush();
+	    
+	    // IMPORTACION DE COLORES
+	    
+	    List<Color> colores = new LinkedList<Color>();
+	    
+	    for(Map<String,Object> item:jsonList)
+	    {
+	    	if(item.get("entidad").equals("color"))
+	    	{
+	    		String uuidItem = (String) item.get("uuid");
+	    		String nombre = (String) item.get("nombre");
+	    		
+	    		String[] acabadosItem = (String[]) item.get("acabados");
+	    		
+	    		Color color = new Color();
+	    		color.setUuid(uuidItem);
+	    		color.setNombre(this.encryptor.encrypt(nombre));
+	    		colores.add(color);
+	    		
+	    		for(String uuidAcabado:acabadosItem)
+	    		{
+	    			for(Acabado acabado:acabados)
+	    			{
+	    				if(acabado.getUuid().equals(uuidAcabado))
+	    				{
+	    					color.addAcabado(acabado);
+	    					break;
+	    				}
+	    			}
+	    		}
+	    		
+	    		colores.add(color);
+	    	}
+	    }
+	    
+	    this.colorRepo.saveAll(colores);
+	    this.colorRepo.flush();
+	    
+	    this.acabadoRepo.saveAll(acabados);
+	    this.acabadoRepo.flush();	    
+	    
+	    List<Producto> productos = new LinkedList<Producto>();
+	    
+	    // IMPORTACION DE PRODUCTOS
+	    for(Map<String,Object> item:jsonList)
+	    {
+	        if(item.get("entidad").equals("producto"))
+	        {
+	            String uuidItem = (String) item.get("uuid");
+	            String nombre = (String) item.get("nombre");
+	            String tipo = (String) item.get("tipo");
+	            String cajon = (String) item.get("cajon");
+	            
+	            // Encriptar los campos de texto
+	            nombre = this.encryptor.encrypt(nombre);
+	            tipo = this.encryptor.encrypt(tipo);
+	            
+	            if(cajon != null && !cajon.isEmpty())
+	            {
+	                cajon = this.encryptor.encrypt(cajon);
+	            }
+	            
+	            // Crear y configurar la entidad Producto
+	            Producto producto = new Producto();
+	            producto.setUuid(uuidItem);
+	            producto.setNombre(nombre);
+	            producto.setTipo(tipo);
+	            producto.setCajon(cajon); // Puede ser null
+	            
+	            productos.add(producto);
+	        }
+	    }
+	    
+	    this.productoRepo.saveAll(productos);
+	    this.productoRepo.flush();
+	    
+	    // IMPORTACION DE VARIANTES (SERIES)
+	    
+	    List<Serie> series = new LinkedList<Serie>();
+
+	    for(Map<String,Object> item:jsonList)
+	    {
+	        if(item.get("entidad").equals("variante"))
+	        {
+	            String uuidItem = (String) item.get("uuid");
+	            String variante = (String) item.get("variante");
+	            String modulo = (String) item.get("modulo");
+	            String extra = (String) item.get("extra");
+	            String uuidProducto = (String) item.get("producto");
+	            
+	            // Encriptar los campos de texto
+	            variante = this.encryptor.encrypt(variante);
+	            modulo = this.encryptor.encrypt(modulo);
+	            
+	            if(extra != null && !extra.isEmpty())
+	            {
+	                extra = this.encryptor.encrypt(extra);
+	            }
+	            
+	            // Crear la entidad Serie
+	            Serie serie = new Serie();
+	            serie.setUuid(uuidItem);
+	            serie.setVariante(variante);
+	            serie.setModulo(modulo);
+	            serie.setExtra(extra);
+	            
+	            // Buscar y relacionar el producto
+	            for(Producto producto : productos)
+	            {
+	                if(producto.getUuid().equals(uuidProducto))
+	                {
+	                    serie.setProducto(producto);
+	                    break;
+	                }
+	            }
+	            
+	            series.add(serie);
+	        }
+	    }
+
+	    // Guardar primero las series y luego los productos (o al revés según dependencias)
+	    this.serieRepo.saveAll(series);
+	    this.serieRepo.flush();
+
+	    this.productoRepo.saveAll(productos);
+	    this.productoRepo.flush();
+	    
+	 // IMPORTACION DE FRENTES
+
+	    List<Frente> frentes = new LinkedList<Frente>();
+
+	    // Crear mapas para búsqueda rápida por UUID
+	    Map<String, Acabado> acabadoMap = new HashMap<>();
+	    for(Acabado acabado : acabados)
+	    {
+	        acabadoMap.put(acabado.getUuid(), acabado);
+	    }
+
+	    Map<String, Producto> productoMap = new HashMap<>();
+	    for(Producto producto : productos)
+	    {
+	        productoMap.put(producto.getUuid(), producto);
+	    }
+
+	    for(Map<String,Object> item:jsonList)
+	    {
+	        if(item.get("entidad").equals("frente"))
+	        {
+	            String uuidItem = (String) item.get("uuid");
+	            String nombre = (String) item.get("nombre");
+	            String referencia = (String) item.get("referencia");
+	            Boolean regleta = (Boolean) item.get("regleta");
+	            Boolean tirador = (Boolean) item.get("tirador");
+	            
+	            // Listas de UUIDs que vienen en el JSON
+	            String[] acabadosUuids = (String[]) item.get("acabados");
+	            String[] acabadosExtensionUuids = (String[]) item.get("acabadosExtension");
+	            String[] productosUuids = (String[]) item.get("productos");
+	            
+	            // Encriptar campos de texto
+	            nombre = this.encryptor.encrypt(nombre);
+	            referencia = this.encryptor.encrypt(referencia);
+	            
+	            // Crear la entidad Frente
+	            Frente frente = new Frente();
+	            frente.setUuid(uuidItem);
+	            frente.setNombre(nombre);
+	            frente.setReferencia(referencia);
+	            frente.setRegleta(regleta != null ? regleta : false);
+	            frente.setTirador(tirador != null ? tirador : false);
+	            
+	            // Relacionar acabados
+	            if(acabadosUuids != null)
+	            {
+	                for(String uuidAcabado : acabadosUuids)
+	                {
+	                    Acabado acabado = acabadoMap.get(uuidAcabado);
+	                    if(acabado != null)
+	                    {
+	                        frente.addAcabado(acabado);
+	                    }
+	                }
+	            }
+	            
+	            // Relacionar acabados de extension
+	            if(acabadosExtensionUuids != null)
+	            {
+	                for(String uuidAcabadoExt : acabadosExtensionUuids)
+	                {
+	                    Acabado acabadoExt = acabadoMap.get(uuidAcabadoExt);
+	                    if(acabadoExt != null)
+	                    {
+	                        frente.addAcabadoExtension(acabadoExt);
+	                    }
+	                }
+	            }
+	            
+	            // Relacionar productos
+	            if(productosUuids != null)
+	            {
+	                for(String uuidProducto : productosUuids)
+	                {
+	                    Producto producto = productoMap.get(uuidProducto);
+	                    if(producto != null)
+	                    {
+	                        frente.addProducto(producto);
+	                    }
+	                }
+	            }
+	            
+	            frentes.add(frente);
+	        }
+	    }
+
+	    // Guardar los frentes
+	    this.frenteRepo.saveAll(frentes);
+	    this.frenteRepo.flush();
+	    
+	    this.acabadoRepo.saveAll(acabados);
+	    this.acabadoRepo.flush();
+	    
+	    this.productoRepo.saveAll(productos);
+	    this.productoRepo.flush();
+	    
+	    
+	 // IMPORTACION DE CONFIGURACIONES - Versión mejorada
+
+	    List<Configuracion> configuraciones = new LinkedList<Configuracion>();
+
+	    // Crear mapa de series para búsqueda rápida por UUID
+	    Map<String, Serie> serieMap = new HashMap<>();
+	    for(Serie serie : series)
+	    {
+	        serieMap.put(serie.getUuid(), serie);
+	    }
+
+	    // Crear mapa de acabados por UUID
+	    acabadoMap = new HashMap<>();
+	    for(Acabado acabado : acabados)
+	    {
+	        acabadoMap.put(acabado.getUuid(), acabado);
+	    }
+
+	    for(Map<String,Object> item:jsonList)
+	    {
+	        if(item.get("entidad").equals("configuracion"))
+	        {
+	            Configuracion configuracion = new Configuracion();
+	            
+	            // Campos simples (con null safety)
+	            configuracion.setReferencia((String) item.get("referencia"));
+	            
+	            // Campos numéricos (pueden ser Integer, Long, etc.)
+	            configuracion.setFondo(item.get("fondo") != null ? ((Number) item.get("fondo")).intValue() : null);
+	            configuracion.setAncho(item.get("ancho") != null ? ((Number) item.get("ancho")).intValue() : null);
+	            configuracion.setAlto(item.get("alto") != null ? ((Number) item.get("alto")).intValue() : null);
+	            configuracion.setAltoMax(item.get("altoMax") != null ? ((Number) item.get("altoMax")).intValue() : null);
+	            configuracion.setFondoMin(item.get("fondoMin") != null ? ((Number) item.get("fondoMin")).intValue() : null);
+	            configuracion.setFondoMax(item.get("fondoMax") != null ? ((Number) item.get("fondoMax")).intValue() : null);
+	            
+	            // Campos Float
+	            configuracion.setPrecioMedidaFondoEsp(item.get("precioMedidaFondoEsp") != null ? 
+	                ((Number) item.get("precioMedidaFondoEsp")).floatValue() : null);
+	            configuracion.setPrecioMedidaAnchoEsp(item.get("precioMedidaAnchoEsp") != null ? 
+	                ((Number) item.get("precioMedidaAnchoEsp")).floatValue() : null);
+	            configuracion.setPrecioMedidaAltoEsp(item.get("precioMedidaAltoEsp") != null ? 
+	                ((Number) item.get("precioMedidaAltoEsp")).floatValue() : null);
+	            
+	            // Relacionar serie
+	            String serieUuid = (String) item.get("serie");
+	            if(serieUuid != null)
+	            {
+	                configuracion.setSerie(serieMap.get(serieUuid));
+	            }
+	            
+	            // Procesar armazones (List<Map<String,Object>>)
+	            List<Map<String,Object>> armazonesList = (List<Map<String,Object>>) item.get("armazon");
+	            if(armazonesList != null && !armazonesList.isEmpty())
+	            {
+	                List<Map<String,Object>> armazonesProcesados = new ArrayList<>();
+	                
+	                for(Map<String,Object> armazon : armazonesList)
+	                {
+	                    Map<String,Object> armazonProcesado = new HashMap<>();
+	                    
+	                    // Obtener el acabado por UUID
+	                    String acabadoUuid = (String) armazon.get("acabado");
+	                    Acabado acabado = acabadoMap.get(acabadoUuid);
+	                    
+	                    if(acabado != null)
+	                    {
+	                        armazonProcesado.put("acabado", acabado);
+	                        
+	                        // Obtener el precio (puede ser Integer, Double, Float)
+	                        Number precioNumber = (Number) armazon.get("precio");
+	                        if(precioNumber != null)
+	                        {
+	                            armazonProcesado.put("precio", precioNumber.floatValue());
+	                            armazonesProcesados.add(armazonProcesado);
+	                        }
+	                    }
+	                }
+	                
+	                configuracion.setArmazon(armazonesProcesados);
+	            }
+	            
+	            // Procesar extras (List<Map<String,Object>>)
+	            List<Map<String,Object>> extrasList = (List<Map<String,Object>>) item.get("extras");
+	            if(extrasList != null && !extrasList.isEmpty())
+	            {
+	                List<Map<String,Object>> extrasProcesados = new ArrayList<>();
+	                
+	                for(Map<String,Object> extra : extrasList)
+	                {
+	                    Map<String,Object> extraProcesado = new HashMap<>();
+	                    
+	                    // El extra ya viene como texto desencriptado desde la exportación
+	                    String extraNombre = (String) extra.get("extra");
+	                    if(extraNombre != null)
+	                    {
+	                        extraProcesado.put("extra", extraNombre);
+	                        
+	                        // Obtener el precio
+	                        Number precioNumber = (Number) extra.get("precio");
+	                        if(precioNumber != null)
+	                        {
+	                            extraProcesado.put("precio", precioNumber.floatValue());
+	                            extrasProcesados.add(extraProcesado);
+	                        }
+	                    }
+	                }
+	                
+	                configuracion.setExtras(extrasProcesados);
+	            }
+	            
+	            configuraciones.add(configuracion);
+	        }
+	    }
+
+	    // Guardar todas las configuraciones 
+        this.configRepo.saveAll(configuraciones);
+        this.configRepo.flush();
+	    
+	    
+	    log.info("[ADMIN] -- /import-data -- {} Ha importado una base de datos en JSON de productos con permiso de {} -- {}",usrToken,rol,seguridad);
 	}
 }
