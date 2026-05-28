@@ -2,9 +2,11 @@ package es.aag.configurador.campoaras.rest;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,7 +30,9 @@ import es.aag.configurador.campoaras.dto.OrderDTO;
 import es.aag.configurador.campoaras.dto.ResponseSeleccion;
 import es.aag.configurador.campoaras.dto.SeleccionDTO;
 import es.aag.configurador.campoaras.dto.UserGetDTO;
+import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
 import es.aag.configurador.campoaras.entities.Usuario;
+import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
 import es.aag.configurador.campoaras.repositories.IRolRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.security.GeneralSecurity;
@@ -56,6 +60,9 @@ public class GeneralRestController
 	
 	@Autowired
 	private OrderService orderService;
+	
+	@Autowired
+	private IBulkProductosUsuarioRepository bulkRepo;
 	
 	@Autowired
 	private EncryptorService encryptor;
@@ -167,6 +174,54 @@ public class GeneralRestController
 
 		}
 	}
+	
+	@RequestMapping(method = RequestMethod.PATCH,value = "/configure/{uuid}")
+	public ResponseEntity<?> endConfigure(@PathVariable(value = "uuid",required = true) final String uuid,
+			HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/configure", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/configure", usuario.getUSRToken());
+
+			Optional<BulkProductosUsuario> bulkOpt = this.bulkRepo.findById(uuid);
+			
+			if(!bulkOpt.isPresent())
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha tratado de finalizar una configuracion inexistente con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),usuario.getUSRToken());
+				throw new CPException(404,"Datos inexistentes");
+			}
+			
+			BulkProductosUsuario bulk = bulkOpt.get();
+			
+			bulk.setEnd(true);
+			bulk.setFecha(LocalDateTime.now());
+			this.bulkRepo.save(bulk);
+			this.bulkRepo.flush();
+			
+			return ResponseEntity.ok().build();
+			
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /configure -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+
+		}
+	}
+	
 	
 	@RequestMapping(method = RequestMethod.DELETE,value = "/configure/{uuid}")
 	public ResponseEntity<?> delConfigureProduct(@PathVariable(value = "uuid",required = true) final String uuid,
