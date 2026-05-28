@@ -610,7 +610,6 @@ public class MailService
 			    "<body>\n" +
 			    "    <h2>La tienda %s ha enviado el pedido con referencia %s.</h2>\n" +
 			    "    <h3>El pedido se ha creado en la fecha %s y se ha enviado hoy %s.</h3>\n" +
-			    "    <h3>El pedido posee 45 días de validez siendo la fecha límite %s.</h3>\n" +
 			    "    <h3>Se ha adjuntado un archivo PDF con los detalles del pedido.</h3>\n" +
 			    "</body>\n" +
 			    "</html>";

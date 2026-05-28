@@ -6,6 +6,9 @@ import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import es.aag.configurador.campoaras.dto.UserGetDTO;
 import es.aag.configurador.campoaras.entities.Usuario;
@@ -254,31 +259,44 @@ public class AdminRestController
 		}
 	}
 	
-//	@RequestMapping(method = RequestMethod.POST,value = "/export-data/{verCode}",produces = "application/json")
-//	public ResponseEntity<?> exportJson(@RequestBody(required = true) Map<String,String> body,
-//			HttpServletRequest request,Authentication authentication)
-//	{
-//		try
-//		{
-//			String ip = this.security.getClientIPAddress(request);
-//			String seguridad = this.security.getIpInfo(ip, request);
-//			
-//			Usuario usuario = this.security.isAuth(userRepo, "/export-data", seguridad);
-//			
-//			
-//		}
-//		catch(CPException ex)
-//		{
-//			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
-//		}
-//		catch(Exception ex)
-//		{
-//			String ip = this.security.getClientIPAddress(request);
-//			String seguridad = this.security.getIpInfo(ip, request);
-//			
-//			log.error("[ERROR] -- /export-data -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
-//			log.error("[DETAILS]",ex);
-//			return ResponseEntity.status(500).body("Error interno de servidor");		
-//		}
-//	}
+	@RequestMapping(method = RequestMethod.POST,value = "/export-data",produces = "application/json")
+	public ResponseEntity<?> exportJson(@RequestBody(required = true) Map<String,String> body,
+			HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/export-data", seguridad);
+			
+			String verCode = body.get("codigo");
+			
+			List<Map<String,Object>> json = this.adminService.exportData(usuario.getUuid(), verCode, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			 // Serializar la lista a JSON
+	        ObjectMapper mapper = new ObjectMapper();
+	        byte[] jsonBytes = mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(json);
+
+	        // Construir la respuesta como descarga de archivo
+	        return ResponseEntity.ok()
+	                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"export-data.json\"")
+	                .contentType(MediaType.APPLICATION_JSON)
+	                .contentLength(jsonBytes.length)
+	                .body(new ByteArrayResource(jsonBytes));
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /export-data -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
 }

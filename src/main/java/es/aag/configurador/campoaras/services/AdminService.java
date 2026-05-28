@@ -20,7 +20,10 @@ import es.aag.configurador.campoaras.dto.UserGetDTO;
 import es.aag.configurador.campoaras.entities.Acabado;
 import es.aag.configurador.campoaras.entities.AdminVerification;
 import es.aag.configurador.campoaras.entities.Color;
+import es.aag.configurador.campoaras.entities.Configuracion;
+import es.aag.configurador.campoaras.entities.Frente;
 import es.aag.configurador.campoaras.entities.Producto;
+import es.aag.configurador.campoaras.entities.Serie;
 import es.aag.configurador.campoaras.entities.Usuario;
 import es.aag.configurador.campoaras.repositories.IAcabadoRepository;
 import es.aag.configurador.campoaras.repositories.IAdminVerificationRepository;
@@ -33,6 +36,7 @@ import es.aag.configurador.campoaras.repositories.ISerieRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
+import es.aag.configurador.campoaras.utils.Validations;
 
 /**
  * Servicio encargado de las acciones de administración
@@ -77,15 +81,14 @@ public class AdminService
 	@Autowired
 	private IFrenteRepository frenteRepo;
 	
-	
+	private final Validations validation;
 	
 	@Autowired
 	private PasswordEncoder encoder;
-	
 
 	public AdminService()
 	{
-		
+		this.validation = new Validations();
 	}
 	
 	/**
@@ -334,88 +337,207 @@ public class AdminService
 		
 		this.mail.sendMailAdminVerification(username, email, usuario.getUSRToken(), seguridad, saltBase64);
 		
-		log.info("[ADMIN] -- /verificate-action -- {} Ha solicitado una accion de {} con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+		log.info("[ADMIN] -- /verificate-action -- {} Ha solicitado una accion de {} con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),CPConstants.SUPADMIN_ROLE,seguridad);
 	
 	}
 	
-//	public List<Map<String,Object>> exportData(String uuid,String verCode,String rol,String seguridad,String usrToken) throws CPException
-//	{
-//		List<AdminVerification> verificaciones = this.verRepo.findByAdminUuid(uuid);
-//		
-//		AdminVerification found = null;
-//		
-//		for(AdminVerification item:verificaciones)
-//		{
-//			LocalDateTime now = LocalDateTime.now();
-//			
-//			if(!now.isAfter(item.getEndVerCode()))
-//			{
-//				if(this.encoder.matches(verCode, item.getVerCode()))
-//				{
-//					found = item;
-//				}
-//			}
-//		}
-//		
-//		if(found == null)
-//		{
-//			log.warn("[AVISO] -- /export-data -- {} Ha introducido un código de verificacion erroneo para exportar la base de datos con permiso de {} -- {}");
-//			throw new CPException(403,"No tienes permiso");
-//		}
-//		
-//		this.verRepo.deleteAll(verificaciones);
-//		this.verRepo.flush();
-//		
-//		List<Map<String,Object>> response = new LinkedList<Map<String,Object>>();
-//		
-//		// Extracción de acabados
-//		for(Acabado acabado:this.acabadoRepo.findAll())
-//		{
-//			Map<String,Object> item = new HashMap<String, Object>();
-//			item.put("entidad", "acabado");
-//			item.put("uuid", acabado.getUuid());
-//			item.put("nombre", this.encryptor.decrypt(acabado.getNombre()));
-//			
-//			String[] tipos = acabado.getTipos();
-//			
-//			for(int i = 0;i<tipos.length;i++)
-//			{
-//				tipos[i] = this.encryptor.decrypt(tipos[i]);
-//			}
-//			
-//			item.put("tipos", tipos);
-//			response.add(item);
-//		}
-//		
-//		//Extraccion de colores
-//		for(Color color:this.colorRepo.findAll())
-//		{
-//			Map<String,Object> item = new HashMap<String, Object>();
-//			item.put("entidad", "color");
-//			item.put("uuid", color.getUuid());
-//			item.put("nombre", this.encryptor.decrypt(color.getNombre()));
-//			
-//			List<String> acabados = new LinkedList<String>();
-//			for(Acabado acabado:color.getAcabados())
-//			{
-//				acabados.add(acabado.getUuid());
-//			}
-//			
-//			item.put("acabados", acabados);
-//			
-//		}
-//		
-//		// Extraccion de productos
-//		for(Producto producto:this.productoRepo.findAll())
-//		{
-//			Map<String,Object> item = new HashMap<String, Object>();
-//			item.put("entidad", "producto");
-//			item.put("uuid", producto.getUuid());
-//			item.put("nombre", this.encryptor.decrypt(producto.getNombre()));
-//			item.put("tipo", this.encryptor.decrypt(producto.getTipo()));
-//			item.put("cajon", producto.getCajon()!=null ? this.encryptor.decrypt(producto.getCajon()) : null);
-//		}
-//		
-//		
-//	}
+	public List<Map<String,Object>> exportData(String uuid,String verCode,String rol,String seguridad,String usrToken) throws CPException
+	{
+		List<AdminVerification> verificaciones = this.verRepo.findByAdminUuid(uuid);
+		
+		validation.initialize(null, null, this.acabadoRepo, null, null, null, this.encryptor);
+		
+		AdminVerification found = null;
+		
+		for(AdminVerification item:verificaciones)
+		{
+			LocalDateTime now = LocalDateTime.now();
+			
+			if(!now.isAfter(item.getEndVerCode()))
+			{
+				if(this.encoder.matches(verCode, item.getVerCode()))
+				{
+					found = item;
+				}
+			}
+		}
+		
+		if(found == null)
+		{
+			log.warn("[AVISO] -- /export-data -- {} Ha introducido un código de verificacion erroneo para exportar la base de datos con permiso de {} -- {}");
+			throw new CPException(403,"No tienes permiso");
+		}
+		
+		this.verRepo.deleteAll(verificaciones);
+		this.verRepo.flush();
+		
+		List<Map<String,Object>> response = new LinkedList<Map<String,Object>>();
+		
+		// Extracción de acabados
+		for(Acabado acabado:this.acabadoRepo.findAll())
+		{
+			Map<String,Object> item = new HashMap<String, Object>();
+			item.put("entidad", "acabado");
+			item.put("uuid", acabado.getUuid());
+			item.put("nombre", this.encryptor.decrypt(acabado.getNombre()));
+			
+			String[] tipos = acabado.getTipos();
+			
+			for(int i = 0;i<tipos.length;i++)
+			{
+				tipos[i] = this.encryptor.decrypt(tipos[i]);
+			}
+			
+			item.put("tipos", tipos);
+			response.add(item);
+		}
+		
+		//Extraccion de colores
+		for(Color color:this.colorRepo.findAll())
+		{
+			Map<String,Object> item = new HashMap<String, Object>();
+			item.put("entidad", "color");
+			item.put("uuid", color.getUuid());
+			item.put("nombre", this.encryptor.decrypt(color.getNombre()));
+			
+			List<String> acabados = new LinkedList<String>();
+			for(Acabado acabado:color.getAcabados())
+			{
+				acabados.add(acabado.getUuid());
+			}
+			
+			item.put("acabados", acabados);
+			response.add(item);
+		}
+		
+		// Extraccion de productos
+		for(Producto producto:this.productoRepo.findAll())
+		{
+			Map<String,Object> item = new HashMap<String, Object>();
+			item.put("entidad", "producto");
+			item.put("uuid", producto.getUuid());
+			item.put("nombre", this.encryptor.decrypt(producto.getNombre()));
+			item.put("tipo", this.encryptor.decrypt(producto.getTipo()));
+			item.put("cajon", producto.getCajon()!=null ? this.encryptor.decrypt(producto.getCajon()) : null);
+			response.add(item);
+		}
+		
+		// Extraccion de variantes
+		for(Serie serie:this.serieRepo.findAll())
+		{
+			Map<String,Object> item = new HashMap<String, Object>();
+			item.put("entidad", "variante");
+			item.put("uuid", serie.getUuid());
+			item.put("variante", this.encryptor.decrypt(serie.getVariante()));
+			item.put("modulo", this.encryptor.decrypt(serie.getModulo()));
+			item.put("extra", this.encryptor.decrypt(serie.getExtra()));
+			item.put("producto", serie.getProducto().getUuid());
+			response.add(item);
+		}
+		
+		// Extraccion de frentes
+		for(Frente frente:this.frenteRepo.findAll())
+		{
+			Map<String,Object> item = new HashMap<String, Object>();
+			item.put("entidad", "frente");
+			item.put("uuid", frente.getUuid());
+			item.put("nombre", this.encryptor.decrypt(frente.getNombre()));
+			item.put("referencia", this.encryptor.decrypt(frente.getReferencia()));
+			item.put("regleta", frente.isRegleta());
+			item.put("tirador", frente.isTirador());
+			
+			List<String> acabados = new LinkedList<String>();
+			List<String> acabadosExtension = new LinkedList<String>();
+			List<String> productos = new LinkedList<String>();
+
+			
+			for(Acabado acabado:frente.getAcabados())
+			{
+				acabados.add(acabado.getUuid());
+			}
+			
+			for(Acabado acabado:frente.getAcabadosExtension())
+			{
+				acabadosExtension.add(acabado.getUuid());
+			}
+						
+			for(Producto producto:frente.getProductoFrente())
+			{
+				productos.add(producto.getUuid());
+			}
+			
+			item.put("acabados", acabados);
+			item.put("acabadosExtension", acabadosExtension);
+			item.put("productos", productos);
+		}
+		
+		// Extraccion de configuraciones
+		for(Configuracion config:this.configRepo.findAll())
+		{
+			Map<String,Object> item = new HashMap<String, Object>();
+			item.put("entidad", "configuracion");
+			item.put("referencia", config.getReferencia());
+			item.put("fondo", config.getFondo());
+		    item.put("ancho", config.getAncho());
+		    item.put("alto", config.getAlto());
+		    item.put("altoMax", config.getAltoMax());
+		    item.put("fondoMin", config.getFondoMin());
+		    item.put("fondoMax", config.getFondoMax());
+		    item.put("precioMedidaFondoEsp", config.getPrecioMedidaFondoEsp());
+		    item.put("precioMedidaAnchoEsp", config.getPrecioMedidaAnchoEsp());
+		    item.put("precioMedidaAltoEsp", config.getPrecioMedidaAltoEsp());
+		    item.put("serie", config.getSerie().getUuid());
+		    
+		    List<Map<String,Object>> armazones = new LinkedList<Map<String,Object>>();
+		    
+		    if(config.getArmazon()!=null)
+		    {
+		    	for(Map<String,Object> armazon:config.getArmazon())
+			    {
+			    	Map<String,Object> itemArmazon = new HashMap<String, Object>();
+			    	
+			    	String nombre = this.encryptor.decrypt((String) armazon.get("nombre"));
+			    	Acabado acabado = this.validation.findAcabado(nombre);
+			    	
+			    	if(acabado!=null)
+			    	{
+			    		itemArmazon.put("acabado", acabado.getUuid());
+			    		Number rawPrecio = (Number) armazon.get("precio");
+			    		itemArmazon.put("precio", rawPrecio.floatValue());
+			    		armazones.add(itemArmazon);
+			    	}
+			    }
+		    }
+		  
+		    item.put("armazon",armazones);
+		    
+		    List<Map<String,Object>> extras = new LinkedList<Map<String,Object>>();
+		    
+		    if(config.getExtras()!=null)
+		    {
+		    	for(Map<String,Object> extra:config.getExtras())
+			    {
+			    	Map<String,Object> itemExtra = new HashMap<String, Object>();
+			    	
+			    	String nombre = this.encryptor.decrypt((String) extra.get("nombre"));
+		    		itemExtra.put("extra", nombre);
+		    		Number rawPrecio = (Number) extra.get("precio");
+		    		itemExtra.put("precio", rawPrecio.floatValue());
+		    		extras.add(itemExtra);
+			    }
+		    }	
+		    
+		    
+		    
+		    item.put("extras",extras);
+
+		    response.add(item);			
+		}
+		
+		validation.destroy();
+		
+		log.info("[ACCION] -- /export-data -- {} Ha solicitado una exportación de los productos de la base de datos con permiso de {} -- {}",usrToken,rol,seguridad);
+		
+		return response;
+	}
 }

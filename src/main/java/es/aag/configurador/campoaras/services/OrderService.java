@@ -322,7 +322,7 @@ public class OrderService
 		pedido.setReferencia(this.encryptor.encrypt(body.getReferencia()));
 		pedido.setUsuarioPedido(usuario);
 		pedido.setFecha(LocalDateTime.now());
-		pedido.setEstado(EstadoPedido.NO_CURSADO);
+		pedido.setEstado(EstadoPedido.CURSADO);
 		
 		log.info("[ACCION] -- /order-proposal -- {} Ha tramitado un pedido con permiso de {} -- {}",usrToken,rol,seguridad);
 		
