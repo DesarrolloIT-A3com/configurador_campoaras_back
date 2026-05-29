@@ -1,0 +1,46 @@
+[Unit]
+Description=Campoaras Configurador – Spring Boot backend
+Documentation=https://campoaras.es
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=campoaras
+Group=campoaras
+WorkingDirectory=/opt/campoaras
+
+# --- Variables de entorno cargadas directamente por systemd ---
+# Así la JVM las ve como variables del sistema sin necesidad de .env
+EnvironmentFile=/opt/campoaras/.env
+
+# --- Arranque ---
+ExecStart=/usr/bin/java \
+    -Xms256m \
+    -Xmx512m \
+    -XX:+UseG1GC \
+    -XX:+HeapDumpOnOutOfMemoryError \
+    -XX:HeapDumpPath=/opt/campoaras/logs/heapdump.hprof \
+    -Dapp.imgs.path=/opt/campoaras/imgs \
+    -Dspring.profiles.active=prod \
+    -Dspring.config.additional-location=file:/opt/campoaras/ \
+    -jar /opt/campoaras/configurador-campoaras.jar
+
+# --- Parada limpia ---
+ExecStop=/bin/kill -SIGTERM $MAINPID
+
+# --- Reinicio automático ante caída inesperada ---
+Restart=on-failure
+RestartSec=10s
+TimeoutStopSec=30s
+
+# --- Logs ---
+StandardOutput=append:/opt/campoaras/logs/campoaras.log
+StandardError=append:/opt/campoaras/logs/campoaras-error.log
+
+# --- Seguridad del proceso ---
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
