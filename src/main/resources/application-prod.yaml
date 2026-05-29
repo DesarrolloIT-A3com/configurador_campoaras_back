@@ -1,0 +1,63 @@
+# debe de estar situado en /opt/campoaras
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  datasource:
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/configurador_campoaras
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      connection-timeout: 60000
+      maximum-pool-size: 10
+
+  mail:
+    host: mail.creacionescampoaras.com
+    port: 465
+    username: ${COMUNICATION_MAIL}
+    password: ${COMUNICATION_PASS}
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          starttls:
+            enable: false
+  
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+server:
+    port: 8081
+    address: 127.0.0.1
+ 
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
+    
+logging:
+  level:
+    root: WARN
+    es.aag: INFO         
+  file:
+    name: /opt/campoaras/logs/campoaras.log
+
+jwt:
+  secret-key: ${CPWT_KEY}
+  acces-token-expiration: 600000
+  refresh-token-expiration: 10800000
+
+url-cors: ${URL_CORS}
+
+crypto:
+  password: ${PASSWORD}
+  salt: ${SALT}
+

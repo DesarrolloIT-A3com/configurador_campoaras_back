@@ -17,27 +17,27 @@ public final class CPConstants
 	
 	// RUTAS
     public static final String ENV_PATH = "./src/main/resources/.env";
-    public static final String IMG_PATH = "./src/main/resources/imgs";
+//    public static final String IMG_PATH = "./src/main/resources/imgs"; DESARROLLO
+    public static final String IMG_PATH = System.getProperty("app.imgs.path", "/opt/campoaras/imgs"); // PRODUCCION
     public static final String [] ROUTES_SWAGGER = {"/swagger-ui.html","/swagger-ui/**","/v3/api-docs/**","/v3/api-docs.yaml","/openapi/**"};
     public static final String [] ROUTES_JWT = {"/v1/auth/login","/v1/auth/register","/v1/auth/refresh","/v1/auth/verify/**","/v1/auth/forget-password/**","/v1/auth/reset-password/**"};
     
     // VARIABLES DE .ENV
-    public static final Dotenv dotenv = DotEnvInitializer.path.isEmpty() ?  
-    		Dotenv.configure()
-            .filename(ENV_PATH.split("/")[4])
-            .load()
-		:
-			Dotenv.configure()
-			.directory(ENV_PATH)
-            .filename(ENV_PATH.split("/")[4])
-            .load();
+    private static String getEnv(String key) {
+        String val = System.getProperty(key);
+        if (val != null && !val.isBlank()) return val;
+        val = System.getenv(key);
+        if (val != null && !val.isBlank()) return val;
+        throw new IllegalStateException("[CONFIG] Variable de entorno no encontrada: " + key);
+    }
     
     // SUPER USUARIO (TEMPORAL)
-    public final static String[] ADMIN_NAME = {dotenv.get("ADMIN_NAME")};
-    public final static String[] ADMIN_PASS = {dotenv.get("ADMIN_PASS")};
-    public static final String ADMIN_MAIL = dotenv.get("ADMIN_MAIL");
-    public static final String COMUNICATION_MAIL = dotenv.get("COMUNICATION_MAIL");
+    public final static String[] ADMIN_NAME = {getEnv("ADMIN_NAME")};
+    public final static String[] ADMIN_PASS = {getEnv("ADMIN_PASS")};
+    public static final String ADMIN_MAIL = getEnv("ADMIN_MAIL");
+    public static final String COMUNICATION_MAIL = getEnv("COMUNICATION_MAIL");
 
+    
     
     
     // CABECERAS

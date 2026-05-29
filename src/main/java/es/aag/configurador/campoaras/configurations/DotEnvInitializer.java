@@ -14,27 +14,32 @@ public class DotEnvInitializer implements ApplicationContextInitializer<Configur
 	public static String path = "";
 	
 	@Override
-	public void initialize(ConfigurableApplicationContext applicationContext) 
+	public void initialize(ConfigurableApplicationContext applicationContext)
 	{
-		log.info("[ADMIN] Cargando variables de entorno");
-		Dotenv dotenv = null;
-		
-		try
-		{
-			path = "src/main/resources";
-			dotenv = Dotenv.configure()
-					.directory(path)
-					.filename(".env")
-					.load();
-		}
-		catch(DotenvException ex)
-		{
-			dotenv = Dotenv.configure()
-					.filename(".env")
-					.load();
-		}
-		dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
-		
+	    log.info("[ADMIN] Cargando variables de entorno");
+
+	    // En producción las variables ya están en el sistema (export / .service)
+	    // .env se carga si existe por lo que el sistema entenderá que está en desarrollo
+	    try
+	    {
+	        Dotenv dotenv = Dotenv.configure()
+	                .directory("src/main/resources")
+	                .filename(".env")
+	                .ignoreIfMissing()   // ← clave: no falla si no existe
+	                .load();
+	        dotenv.entries().forEach(entry -> {
+	            // Solo sobreescribe si el sistema NO tiene ya la variable
+	            if (System.getProperty(entry.getKey()) == null
+	                    && System.getenv(entry.getKey()) == null) {
+	                System.setProperty(entry.getKey(), entry.getValue());
+	            }
+	        });
+	        log.info("[ADMIN] .env cargado desde src/main/resources");
+	    }
+	    catch (Exception ex)
+	    {
+	        log.info("[ADMIN] No se encontró .env local, usando variables del sistema");
+	    }
 	}
 
 }

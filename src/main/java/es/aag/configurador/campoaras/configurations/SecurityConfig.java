@@ -1,5 +1,7 @@
 package es.aag.configurador.campoaras.configurations;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +23,7 @@ import es.aag.configurador.campoaras.utils.CPConstants;
 @Configuration
 public class SecurityConfig 
 {
+	private final Logger log = LogManager.getLogger();
 	private final JwtAuthenticationFilter jwtAuthFilter;
 	private final UrlBasedCorsConfigurationSource corsConfigurationSource;
 	
@@ -64,6 +67,7 @@ public class SecurityConfig
 	@Bean
 	public BytesEncryptor bytesEncryptor(@Value("${crypto.password}") String password,@Value("${crypto.salt}") String salt)
 	{
+		log.info("[CRYPTO] password={} salt={}", password, salt);
 		return Encryptors.stronger(password,salt);
 	}
 }

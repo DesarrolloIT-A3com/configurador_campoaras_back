@@ -109,7 +109,7 @@ public class AuthRestController
 			// ACCESS TOKEN EN COOKIE
 			ResponseCookie accessCookie = ResponseCookie.from("access_token",tokens.getAccessToken())
 					.httpOnly(true)
-					.secure(false)
+					.secure(true)
 					.sameSite("Lax")
 					.path("/")
 					.maxAge(tokens.getAccessExpire()).build();
@@ -117,7 +117,7 @@ public class AuthRestController
 			// REFRESH TOKEN EN COOKIE
 			ResponseCookie refreshCookie = ResponseCookie.from("refresh_token",tokens.getRefreshToken())
 					.httpOnly(true)
-					.secure(false)
+					.secure(true)
 					.sameSite("Lax")
 					.path("/")
 					.maxAge(tokens.getRefreshExpire()).build();
@@ -158,7 +158,7 @@ public class AuthRestController
 			// Invalida el access token
 	        ResponseCookie accessCookie = ResponseCookie.from("access_token", "")
 	                .httpOnly(true)
-	                .secure(false)   // Igual que en login
+	                .secure(true)   // Igual que en login
 	                .sameSite("Lax")
 	                .path("/")
 	                .maxAge(0)       // Esto elimina la cookie del navegador
@@ -167,7 +167,7 @@ public class AuthRestController
 	        // Invalida el refresh token
 	        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", "")
 	                .httpOnly(true)
-	                .secure(false)
+	                .secure(true)
 	                .sameSite("Lax")
 	                .path("/")
 	                .maxAge(0)
@@ -239,7 +239,7 @@ public class AuthRestController
 	        // Nuevo access token en cookie
 	        ResponseCookie accessCookie = ResponseCookie.from("access_token", tokens.getAccessToken())
 	                .httpOnly(true)
-	                .secure(false)
+	                .secure(true)
 	                .sameSite("Lax")
 	                .path("/")
 	                .maxAge(tokens.getAccessExpire()).build();
@@ -247,7 +247,7 @@ public class AuthRestController
 	     // REFRESH TOKEN EN COOKIE
 		ResponseCookie refreshCookie = ResponseCookie.from("refresh_token",tokens.getRefreshToken())
 				.httpOnly(true)
-				.secure(false)
+				.secure(true)
 				.sameSite("Lax")
 				.path("/")
 				.maxAge(tokens.getRefreshExpire()).build();
