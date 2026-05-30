@@ -338,15 +338,33 @@ public class ManagmentService
 					}
 				}
 				
+				Set<Acabado> armazonAfectado = new HashSet<Acabado>();
+				Set<Acabado> extensionesAfectados = new HashSet<Acabado>();
+				
 				for(Frente frente:frentes)
 				{
 					if(frente.getProductoFrente().contains(toDelete))
 					{
+						armazonAfectado.addAll(frente.getAcabados());
+						extensionesAfectados.addAll(frente.getAcabadosExtension());						
+						
 						frente.removeProducto(toDelete);
 						
 						if(frente.getProductoFrente().isEmpty())
 						{
 							frenteDelete.add(frente);
+							for(Acabado acabado:armazonAfectado)
+							{
+								frente.removeAcabado(acabado);
+							}
+							
+							for(Acabado acabado:extensionesAfectados)
+							{
+								frente.removeAcabadoExtension(acabado);
+							}
+							this.acabadoRepo.saveAll(armazonAfectado);
+							this.acabadoRepo.saveAll(extensionesAfectados);
+							
 						}
 						else
 						{
