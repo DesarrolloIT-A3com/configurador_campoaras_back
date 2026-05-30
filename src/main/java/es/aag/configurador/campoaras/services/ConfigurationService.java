@@ -378,7 +378,7 @@ private Logger log = LogManager.getLogger();
 	{
 		this.validation.initialize(null, frenteRepo, acabadoRepo, colorRepo, seriesRepo, configuracionRepo, encryptor);
 
-		if(!rol.equals(CPConstants.SUPADMIN_ROLE) &&  !rol.equals(CPConstants.ADMIN_ROLE) && !rol.equals(CPConstants.CLIENTE_ROLE))
+		if(!rol.equals(CPConstants.SUPADMIN_ROLE) &&  !rol.equals(CPConstants.ADMIN_ROLE) && !rol.equals(CPConstants.CLIENTE_ROLE) && !rol.equals(CPConstants.COMERCIAL_ROLE))
 		{
 			log.warn("[AVISO] -- /configure -- {} Ha intentado acceder a la gestión de configuraciones con un permiso de {} -- {}",usrToken,rol,seguridad);
 			throw new CPException(403,"No tienes permiso");
