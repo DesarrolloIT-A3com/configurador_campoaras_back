@@ -342,7 +342,6 @@ public class AdminService
 		
 		this.verRepo.save(verification);
 		this.verRepo.flush();
-		log.info("[ADMIN] CODIGO DE VERIFICACION {}",saltBase64);
 		this.mail.sendMailAdminVerification(username, email, usuario.getUSRToken(), seguridad, saltBase64);
 		
 		log.info("[ADMIN] -- /verificate-action -- {} Ha solicitado una accion de {} con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),CPConstants.SUPADMIN_ROLE,seguridad);
@@ -427,6 +426,7 @@ public class AdminService
 			item.put("nombre", this.encryptor.decrypt(producto.getNombre()));
 			item.put("tipo", this.encryptor.decrypt(producto.getTipo()));
 			item.put("cajon", producto.getCajon()!=null ? this.encryptor.decrypt(producto.getCajon()) : null);
+			item.put("orden", producto.getOrden());
 			response.add(item);
 		}
 		
@@ -439,6 +439,7 @@ public class AdminService
 			item.put("variante", this.encryptor.decrypt(serie.getVariante()));
 			item.put("modulo", this.encryptor.decrypt(serie.getModulo()));
 			item.put("extra", this.encryptor.decrypt(serie.getExtra()));
+			item.put("orden", serie.getOrden()!=null ? serie.getOrden() : 0);
 			item.put("producto", serie.getProducto().getUuid());
 			response.add(item);
 		}
@@ -477,6 +478,8 @@ public class AdminService
 			item.put("acabados", acabados);
 			item.put("acabadosExtension", acabadosExtension);
 			item.put("productos", productos);
+			
+			response.add(item);
 		}
 		
 		// Extraccion de configuraciones
@@ -621,8 +624,7 @@ public class AdminService
 	    	{
 	    		String uuidItem = (String) item.get("uuid");
 	    		String nombre = (String) item.get("nombre");
-	    		String tipos[] = objectMapper.convertValue(item.get("tipos"), String[].class);
-	    		
+	    		String tipos[] = objectMapper.convertValue(item.get("tipos"), String[].class);	    		
 	    		nombre = this.encryptor.encrypt(nombre);
 	    		
 	    		for(int i = 0;i<tipos.length;i++)
@@ -632,7 +634,7 @@ public class AdminService
 	    		
 	    		Acabado acabado = new Acabado();
 	    		acabado.setUuid(uuidItem);
-	    		acabado.setNombre(this.encryptor.encrypt(nombre));
+	    		acabado.setNombre(nombre);
 	    		acabado.setTipos(tipos);
 	    		acabados.add(acabado);
 	    	}
@@ -693,6 +695,8 @@ public class AdminService
 	            String nombre = (String) item.get("nombre");
 	            String tipo = (String) item.get("tipo");
 	            String cajon = (String) item.get("cajon");
+	    		Integer orden = (Integer) item.get("orden");
+
 	            
 	            // Encriptar los campos de texto
 	            nombre = this.encryptor.encrypt(nombre);
@@ -709,6 +713,7 @@ public class AdminService
 	            producto.setNombre(nombre);
 	            producto.setTipo(tipo);
 	            producto.setCajon(cajon); // Puede ser null
+	            producto.setOrden(orden!=null ? orden : 0);
 	            
 	            productos.add(producto);
 	        }
@@ -729,6 +734,7 @@ public class AdminService
 	            String variante = (String) item.get("variante");
 	            String modulo = (String) item.get("modulo");
 	            String extra = (String) item.get("extra");
+	            Integer orden = (Integer) item.get("orden");
 	            String uuidProducto = (String) item.get("producto");
 	            
 	            // Encriptar los campos de texto
@@ -745,7 +751,15 @@ public class AdminService
 	            serie.setUuid(uuidItem);
 	            serie.setVariante(variante);
 	            serie.setModulo(modulo);
-	            serie.setExtra(extra);
+	            if(extra==null)
+	            {
+	            	serie.setExtra(null);
+	            }
+	            else
+	            {
+	            	serie.setExtra(extra.isEmpty() ? null : extra);
+	            }
+	            serie.setOrden(orden!=null ? orden : 0);
 	            
 	            // Buscar y relacionar el producto
 	            for(Producto producto : productos)
@@ -967,7 +981,7 @@ public class AdminService
 	                    String extraNombre = (String) extra.get("extra");
 	                    if(extraNombre != null)
 	                    {
-	                        extraProcesado.put("nombre", extraNombre);
+	                        extraProcesado.put("nombre", this.encryptor.encrypt(extraNombre));
 	                        
 	                        // Obtener el precio
 	                        Number precioNumber = (Number) extra.get("precio");
