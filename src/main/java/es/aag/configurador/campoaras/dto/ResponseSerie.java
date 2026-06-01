@@ -15,6 +15,8 @@ public class ResponseSerie
 	
 	private String extra;
 	
+	private Integer orden;
+	
 	private String uuidProducto;
 	
 	private String nombre;

@@ -146,33 +146,33 @@ public class ManagmentService
 
 				int nuevoOrden = body.getOrden();
 				boolean ordenRepetido = false;
-
+				
 				// Verificar si el orden ya existe con un for normal
-				for(int i = 0; i < productos.size(); i++) {
-				    if(productos.get(i).getOrden() == nuevoOrden) {
-				        ordenRepetido = true;
-				        break;
-				    }
+				for(Producto item:productos)
+				{
+					if(item.getOrden() == nuevoOrden)
+					{
+						ordenRepetido = true;
+						break;
+					}
 				}
 
 				// Si el orden está repetido, desplazar los productos con orden >= nuevoOrden
-				if(ordenRepetido) {
-				    for(int i = 0; i < productos.size(); i++) {
-				        Producto p = productos.get(i);
-				        if(p.getOrden() >= nuevoOrden) {
-				            p.setOrden(p.getOrden() + 1);
-				            this.productoRepo.save(p);
-				        }
-				    }
-				    this.productoRepo.flush();
+				if(ordenRepetido)
+				{
+					for(Producto item:productos)
+					{
+						if(item.getOrden()>=nuevoOrden)
+						{
+							item.setOrden(item.getOrden()+1);
+						}
+					}
+					this.productoRepo.saveAll(productos);
+					this.productoRepo.flush();
 				}
 
 				// Asignar el orden al nuevo producto
 				producto.setOrden(nuevoOrden);
-
-				// Guardar el nuevo producto
-				this.productoRepo.save(producto);
-				this.productoRepo.flush();
 				
 				if(body.getCajon() != null)
 				{
@@ -235,31 +235,36 @@ public class ManagmentService
 
 				int nuevoOrden = body.getOrden();
 				boolean ordenRepetido = false;
+				
+				if(nuevoOrden!=producto.getOrden())
+				{
+					// Verificar si el orden ya existe con un for normal
+					for(Producto item:productos)
+					{
+						if(item.getOrden() == nuevoOrden)
+						{
+							ordenRepetido = true;
+							break;
+						}
+					}
 
-				for(int i = 0; i < productos.size(); i++) {
-				    if(productos.get(i).getOrden() == nuevoOrden) {
-				        ordenRepetido = true;
-				        break;
-				    }
+					// Si el orden está repetido, desplazar los productos con orden >= nuevoOrden
+					if(ordenRepetido)
+					{
+						for(Producto item:productos)
+						{
+							if(item.getOrden()>=nuevoOrden)
+							{
+								item.setOrden(item.getOrden()+1);
+							}
+						}
+						this.productoRepo.saveAll(productos);
+						this.productoRepo.flush();
+					}
+
+					// Asignar el orden al nuevo producto
+					producto.setOrden(nuevoOrden);
 				}
-
-				if(ordenRepetido) {
-				    for(int i = 0; i < productos.size(); i++) {
-				        Producto p = productos.get(i);
-				        if(p.getOrden() >= nuevoOrden) {
-				            p.setOrden(p.getOrden() + 1);
-				            this.productoRepo.save(p);
-				        }
-				    }
-				    this.productoRepo.flush();
-				}
-
-				// Asignar el orden al nuevo producto
-				producto.setOrden(nuevoOrden);
-
-				// Guardar el nuevo producto
-				this.productoRepo.save(producto);
-				this.productoRepo.flush();
 				
 				
 				if(body.getCajon() != null)
@@ -456,6 +461,45 @@ public class ManagmentService
 				serie.setModulo(this.encryptor.encrypt(body.getModulo()));
 				serie.setProducto(producto);
 				
+				
+				int nuevoOrden = 0;
+				
+				if(body.getOrden()!=null)
+				{
+					nuevoOrden = body.getOrden();
+				}
+				
+				boolean ordenRepetido = false;
+				
+				List<Serie> series = this.seriesRepo.findByProducto(producto);
+				
+				
+				// Verificar si el orden ya existe con un for normal
+				for(Serie item:series)
+				{
+					if(item.getOrden() == nuevoOrden)
+					{
+						ordenRepetido = true;
+						break;
+					}
+				}
+
+				// Si el orden está repetido, desplazar los productos con orden >= nuevoOrden
+				if(ordenRepetido)
+				{
+					for(Serie item:series)
+					{
+						if(item.getOrden()>=nuevoOrden)
+						{
+							item.setOrden(item.getOrden()+1);
+						}
+					}
+					this.seriesRepo.saveAll(series);
+					this.seriesRepo.flush();
+				}
+				
+				serie.setOrden(nuevoOrden);
+				
 				if(body.getExtra() != null)
 				{
 					if(!body.getExtra().isBlank())
@@ -469,6 +513,7 @@ public class ManagmentService
 				log.info("[ADMIN] -- /series -- {} Ha añadido la serie {} a la base de datos con permiso de {} -- {}",usrToken,serie.getUuid(),rol,seguridad);
 				
 				this.seriesRepo.save(serie);
+				this.seriesRepo.flush();
 				break;
 			}
 			case CPConstants.GET:
@@ -490,11 +535,16 @@ public class ManagmentService
 						// Hay que desencriptar el producto asociado
 						Producto producto = serie.getProducto();
 						String nombre = this.encryptor.decrypt(producto.getNombre());
+						int orden = 0;
+						if(serie.getOrden()!=null)
+						{
+							orden = serie.getOrden();
+						}
 						
 						byte [] imgBytes = this.loadImg(serie.getUuid(), "/serie", rol, seguridad, usrToken);
 						
 						
-						response.add(new ResponseSerie(serie.getUuid(), variante, modulo, extra, producto.getUuid(), nombre,imgBytes));
+						response.add(new ResponseSerie(serie.getUuid(), variante, modulo, extra, orden,producto.getUuid(), nombre,imgBytes));
 					}
 					
 				}
@@ -528,10 +578,67 @@ public class ManagmentService
 				}
 				
 				Serie serie = serieOpt.get();
+				Producto producto = productOpt.get();
 				
 				serie.setVariante(this.encryptor.encrypt(body.getVariante()));
 				serie.setModulo(this.encryptor.encrypt(body.getModulo()));
-				serie.setProducto(productOpt.get());
+				serie.setProducto(producto);
+				
+				int nuevoOrden = 0;
+				boolean patchOrden = false;
+				
+				if(body.getOrden()!=null)
+				{
+					nuevoOrden = body.getOrden();
+					
+					patchOrden = serie.getOrden()==null; // Se coloca a true en caso de que sea nulo para colocarle un valor
+					
+					if(serie.getOrden()!=null)
+					{
+						patchOrden = serie.getOrden()!=nuevoOrden;
+					}
+				}
+				
+				if(patchOrden)
+				{
+					boolean ordenRepetido = false;
+					
+					List<Serie> series = this.seriesRepo.findByProducto(producto);
+					
+					
+					// Verificar si el orden ya existe con un for normal
+					for(Serie item:series)
+					{
+						if(item.getOrden()!=null)
+						{
+							if(item.getOrden() == nuevoOrden)
+							{
+								ordenRepetido = true;
+								break;
+							}
+						}
+					}
+
+					// Si el orden está repetido, desplazar los productos con orden >= nuevoOrden
+					if(ordenRepetido)
+					{
+						for(Serie item:series)
+						{
+							if(item.getOrden()!=null)
+							{
+								if(item.getOrden()>=nuevoOrden)
+								{
+									item.setOrden(item.getOrden()+1);
+								}
+							}
+						}
+						this.seriesRepo.saveAll(series);
+						this.seriesRepo.flush();
+					}
+					
+					serie.setOrden(nuevoOrden);
+				}
+				
 				serie.setExtra(this.encryptor.encrypt(body.getExtra()));
 				
 				this.transformFile(img, serie.getUuid(), rol, "/series", usrToken, seguridad);

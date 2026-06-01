@@ -37,6 +37,9 @@ public class Serie
 	@Column
 	private String extra;
 	
+	@Column
+	private Integer orden = 0;
+	
 	@ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "producto_id")
     private Producto producto;
