@@ -342,7 +342,7 @@ public class AdminService
 		
 		this.verRepo.save(verification);
 		this.verRepo.flush();
-		
+		log.info("[ADMIN] CODIGO DE VERIFICACION {}",saltBase64);
 		this.mail.sendMailAdminVerification(username, email, usuario.getUSRToken(), seguridad, saltBase64);
 		
 		log.info("[ADMIN] -- /verificate-action -- {} Ha solicitado una accion de {} con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),CPConstants.SUPADMIN_ROLE,seguridad);
@@ -935,7 +935,7 @@ public class AdminService
 	                    
 	                    if(acabado != null)
 	                    {
-	                        armazonProcesado.put("acabado", acabado);
+	                        armazonProcesado.put("nombre", acabado.getNombre());
 	                        
 	                        // Obtener el precio (puede ser Integer, Double, Float)
 	                        Number precioNumber = (Number) armazon.get("precio");
@@ -967,7 +967,7 @@ public class AdminService
 	                    String extraNombre = (String) extra.get("extra");
 	                    if(extraNombre != null)
 	                    {
-	                        extraProcesado.put("extra", extraNombre);
+	                        extraProcesado.put("nombre", extraNombre);
 	                        
 	                        // Obtener el precio
 	                        Number precioNumber = (Number) extra.get("precio");

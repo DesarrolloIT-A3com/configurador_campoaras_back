@@ -229,118 +229,118 @@ public class AdminRestController
 		}
 	}
 	
-//	@RequestMapping(method = RequestMethod.POST,value = "/verificate-action",consumes="application/json")
-//	public ResponseEntity<?> verificateAction(@RequestBody(required = true)Map<String,String> body,
-//			HttpServletRequest request,Authentication authentication)
-//	{
-//		try
-//		{
-//			String ip = this.security.getClientIPAddress(request);
-//			String seguridad = this.security.getIpInfo(ip, request);
-//			
-//			Usuario usuario = this.security.isAuth(userRepo, "/verificate-action", seguridad);
-//			
-//			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/verificate", usuario.getUSRToken());
-//			
-//			this.adminService.sendCode(body, usuario, seguridad);
-//			
-//			return ResponseEntity.status(204).build();
-//		}
-//		catch(CPException ex)
-//		{
-//			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
-//		}
-//		catch(Exception ex)
-//		{
-//			String ip = this.security.getClientIPAddress(request);
-//			String seguridad = this.security.getIpInfo(ip, request);
-//			
-//			log.error("[ERROR] -- /verificate-action -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
-//			log.error("[DETAILS]",ex);
-//			return ResponseEntity.status(500).body("Error interno de servidor");		
-//		}
-//	}
-//	
-//	@RequestMapping(method = RequestMethod.POST,value = "/export-data",produces = "application/json")
-//	public ResponseEntity<?> exportJson(@RequestBody(required = true) Map<String,String> body,
-//			HttpServletRequest request,Authentication authentication)
-//	{
-//		try
-//		{
-//			String ip = this.security.getClientIPAddress(request);
-//			String seguridad = this.security.getIpInfo(ip, request);
-//			
-//			Usuario usuario = this.security.isAuth(userRepo, "/export-data", seguridad);
-//			
-//			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/export-data", usuario.getUSRToken());
-//			
-//			
-//			String verCode = body.get("codigo");
-//			
-//			List<Map<String,Object>> json = this.adminService.exportData(usuario.getUuid(), verCode, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
-//			
-//			 // Serializar la lista a JSON
-//	        ObjectMapper mapper = new ObjectMapper();
-//	        byte[] jsonBytes = mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(json);
-//
-//	        // Construir la respuesta como descarga de archivo
-//	        return ResponseEntity.ok()
-//	                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"export-data.json\"")
-//	                .contentType(MediaType.APPLICATION_JSON)
-//	                .contentLength(jsonBytes.length)
-//	                .body(new ByteArrayResource(jsonBytes));
-//		}
-//		catch(CPException ex)
-//		{
-//			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
-//		}
-//		catch(Exception ex)
-//		{
-//			String ip = this.security.getClientIPAddress(request);
-//			String seguridad = this.security.getIpInfo(ip, request);
-//			
-//			log.error("[ERROR] -- /export-data -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
-//			log.error("[DETAILS]",ex);
-//			return ResponseEntity.status(500).body("Error interno de servidor");		
-//		}
-//	}
-//	
-//	@RequestMapping(method = RequestMethod.POST,value = "/import-data",consumes = "multipart/form-data")
-//	public ResponseEntity<?> importData(@RequestPart(value = "code",required = true)Map<String,String> body,
-//										@RequestPart(value = "productos",required = true)MultipartFile json,
-//										HttpServletRequest request,Authentication authentication)
-//	{
-//		try
-//		{
-//			String ip = this.security.getClientIPAddress(request);
-//			String seguridad = this.security.getIpInfo(ip, request);
-//			
-//			Usuario usuario = this.security.isAuth(userRepo, "/export-data", seguridad);
-//			
-//			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/export-data", usuario.getUSRToken());
-//			
-//			this.security.validateJson(json, "/import-data", usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
-//			
-//			String verCode = body.get("codigo");
-//			
-//			this.adminService.importData(json, usuario.getUuid(), verCode, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
-//			
-//			return ResponseEntity.ok().build();
-//			
-//		}
-//		catch(CPException ex)
-//		{
-//			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
-//		}
-//		catch(Exception ex)
-//		{
-//			String ip = this.security.getClientIPAddress(request);
-//			String seguridad = this.security.getIpInfo(ip, request);
-//			
-//			log.error("[ERROR] -- /export-data -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
-//			log.error("[DETAILS]",ex);
-//			return ResponseEntity.status(500).body("Error interno de servidor");		
-//		}
-//	}
+	@RequestMapping(method = RequestMethod.POST,value = "/verificate-action",consumes="application/json")
+	public ResponseEntity<?> verificateAction(@RequestBody(required = true)Map<String,String> body,
+			HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/verificate-action", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/verificate", usuario.getUSRToken());
+			
+			this.adminService.sendCode(body, usuario, seguridad);
+			
+			return ResponseEntity.status(204).build();
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /verificate-action -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.POST,value = "/export-data",produces = "application/json")
+	public ResponseEntity<?> exportJson(@RequestBody(required = true) Map<String,String> body,
+			HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/export-data", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/export-data", usuario.getUSRToken());
+			
+			
+			String verCode = body.get("codigo");
+			
+			List<Map<String,Object>> json = this.adminService.exportData(usuario.getUuid(), verCode, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			 // Serializar la lista a JSON
+	        ObjectMapper mapper = new ObjectMapper();
+	        byte[] jsonBytes = mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(json);
+
+	        // Construir la respuesta como descarga de archivo
+	        return ResponseEntity.ok()
+	                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"export-data.json\"")
+	                .contentType(MediaType.APPLICATION_JSON)
+	                .contentLength(jsonBytes.length)
+	                .body(new ByteArrayResource(jsonBytes));
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /export-data -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.POST,value = "/import-data",consumes = "multipart/form-data")
+	public ResponseEntity<?> importData(@RequestPart(value = "code",required = true)Map<String,String> body,
+										@RequestPart(value = "productos",required = true)MultipartFile json,
+										HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/export-data", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/export-data", usuario.getUSRToken());
+			
+			this.security.validateJson(json, "/import-data", usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			String verCode = body.get("codigo");
+			
+			this.adminService.importData(json, usuario.getUuid(), verCode, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.ok().build();
+			
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /export-data -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
 }
 
