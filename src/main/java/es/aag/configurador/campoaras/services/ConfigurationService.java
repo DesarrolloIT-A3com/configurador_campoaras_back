@@ -733,8 +733,25 @@ private Logger log = LogManager.getLogger();
 			}
 		}
 		
-		if(body.getAncho()!=null)
+		if(body.getAncho()!=null || body.getAlto()!=null)
 		{
+			if(body.getAncho().floatValue() != ancho)
+			{
+				ancho = body.getAncho();
+				seleccion.setAncho(ancho);
+			}
+			
+			if(body.getAlto().floatValue() != alto)
+			{
+				alto = body.getAlto();
+				seleccion.setAlto(alto);
+			}
+			
+			precioFinal += config.getPrecioMedidaAnchoEsp()>config.getPrecioMedidaAltoEsp() ? config.getPrecioMedidaAnchoEsp() : config.getPrecioMedidaAltoEsp();
+		}
+		
+		if(body.getAncho()!=null)
+		{	
 			if(body.getAncho().floatValue() != ancho)
 			{
 				precioFinal+=config.getPrecioMedidaAnchoEsp();
