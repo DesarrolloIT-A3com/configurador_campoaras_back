@@ -35,6 +35,12 @@ public final class CPConstants
     // SUPER USUARIO (TEMPORAL)
     public final static String[] ADMIN_NAME = {dotenv.get("ADMIN_NAME")};
     public final static String[] ADMIN_PASS = {dotenv.get("ADMIN_PASS")};
+    public final static String[] ADMIN_NAME_2 = {dotenv.get("ADMIN_NAME_2")};
+    public final static String[] ADMIN_PASS_2 = {dotenv.get("ADMIN_PASS_2")};
+    public final static String[] ADMIN_MAIL_2 = {dotenv.get("ADMIN_MAIL_2")};
+    public final static String[] ADMIN_NAME_3 = {dotenv.get("ADMIN_NAME_3")};
+    public final static String[] ADMIN_PASS_3 = {dotenv.get("ADMIN_PASS_3")};
+    public final static String[] ADMIN_MAIL_3 = {dotenv.get("ADMIN_MAIL_3")};
     public static final String ADMIN_MAIL = dotenv.get("ADMIN_MAIL");
     public static final String COMUNICATION_MAIL = dotenv.get("COMUNICATION_MAIL");
 
