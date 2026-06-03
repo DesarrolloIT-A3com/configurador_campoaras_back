@@ -348,7 +348,7 @@ public class AuthService
 		if(usuario == null)
 		{
 			log.info("[AVISO] -- /forget-password --  Se ha intentado solicitar un código de cambio de contraseña con un usuario inexistente - {} -- {}",email,seguridad);
-			throw new CPException(403,"No tienes permiso");
+			throw new CPException(404,"Datos inexistentes");
 		}
 		
 		VerificationPass verification = this.verPassRepo.findByEmail(usuario.getEmail());

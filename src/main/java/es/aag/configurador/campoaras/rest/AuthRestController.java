@@ -332,8 +332,8 @@ public class AuthRestController
 	
 	
 	
-	@RequestMapping(method = RequestMethod.POST, value = "/forget-password/{userEmail}")
-	public ResponseEntity<?> forgetPass (@PathVariable(value = "userEmail",required = true) final String userEmail,
+	@RequestMapping(method = RequestMethod.POST, value = "/forget-password",consumes = "application/json")
+	public ResponseEntity<?> forgetPass (@RequestBody(required = true)final Map<String,String> body,
 			HttpServletRequest request)
 	{
 		try
@@ -341,6 +341,8 @@ public class AuthRestController
 			String ip = this.security.getClientIPAddress(request);
 			String seguridad = this.security.getIpInfo(ip, request);
 			
+			String userEmail = body.getOrDefault("email",CPConstants.MAP_DEFAULT_VALUE);
+
 			this.authService.verificateForgetPass(userEmail, seguridad);
 			
 			return ResponseEntity.ok().build();
