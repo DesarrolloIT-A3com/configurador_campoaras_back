@@ -21,6 +21,7 @@ import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepositor
 import es.aag.configurador.campoaras.repositories.IPedidoRepository;
 import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
+import es.aag.configurador.campoaras.services.EncryptorService;
 
 @Component
 public class CampoarasScheduled 
@@ -40,14 +41,21 @@ public class CampoarasScheduled
 	@Autowired
 	private IPedidoRepository pedidoRepo;
 	
+	@Autowired
+	private EncryptorService encryptor;
 	
-	@Scheduled(fixedRate = 5 * 60 * 1000) // 5 minutos
+	
+	@Scheduled(
+		    cron = "0 0 2 * * *",
+		    zone = "Europe/Madrid"
+		)
 	@Transactional
 	public void deleteOldConfiguration()
 	{
 		LocalDateTime now = LocalDateTime.now().minusDays(45);
 		log.info("[ADMIN] -- /schedule -- Comienzo del proceso de eliminación de configuraciones obsoletas");
 		List<BulkProductosUsuario> bulks = this.bulkRepo.findAll();
+		List<Pedido> pedidos = this.pedidoRepo.findAll();
 		List<BulkProductosUsuario> toDelete = new LinkedList<BulkProductosUsuario>();
 		List<ProductoConfigurado> selecciones = new LinkedList<ProductoConfigurado>();
 		List<Usuario> affected = new LinkedList<Usuario>();
@@ -70,25 +78,42 @@ public class CampoarasScheduled
 			
 			if(isOld)
 			{
+				String referencia = this.encryptor.decrypt(item.getReferencia());
+				boolean isInPedido = false;
 				Usuario usuario = item.getUsuarioUuid();
-				usuario.removeBulk(item);
 				
-				
-				// Buscamos las selecciones dentro de la cesta para añadirlas a la lista de borrado
-				for(String seleccion:item.getProductos())
+				for(Pedido pedido:pedidos)
 				{
-					Optional<ProductoConfigurado> optSel = this.productoRepo.findById(seleccion);
+					String refPedido = this.encryptor.decrypt(pedido.getReferencia());
 					
-					if(optSel.isPresent())
+					if(pedido.getUsuarioPedido().equals(usuario) && refPedido.equals(referencia))
 					{
-						selecciones.add(optSel.get());
-						size++;
+						isInPedido = true;
+						break;
 					}
 				}
 				
-				toDelete.add(item);
-				affected.add(usuario);
-				log.info("[ADMIN] -- /scheduled -- Se han detectado {} configuraciones obsoletas del usuario {}",size,usuario.getUSRToken());
+				if(!isInPedido)
+				{
+					usuario.removeBulk(item);
+					
+					
+					// Buscamos las selecciones dentro de la cesta para añadirlas a la lista de borrado
+					for(String seleccion:item.getProductos())
+					{
+						Optional<ProductoConfigurado> optSel = this.productoRepo.findById(seleccion);
+						
+						if(optSel.isPresent())
+						{
+							selecciones.add(optSel.get());
+							size++;
+						}
+					}
+					
+					toDelete.add(item);
+					affected.add(usuario);
+					log.info("[ADMIN] -- /scheduled -- Se han detectado {} configuraciones obsoletas del usuario {}",size,usuario.getUSRToken());
+				}
 			}
 		}
 		
@@ -108,54 +133,54 @@ public class CampoarasScheduled
 		}
 	}
 	
-	@Scheduled(fixedRate = 5 * 60 * 1000) // 4 minutos y medio
-	@Transactional
-	public void deleteOldOrders()
-	{
-		LocalDateTime now = LocalDateTime.now().minusDays(45);
-		log.info("[ADMIN] -- /schedule -- Comienzo del proceso de eliminación de pedidos obsoletos");
-		List<Pedido> pedidos = this.pedidoRepo.findAll();
-		List<Pedido> toDelete = new LinkedList<Pedido>();
-		List<Usuario> affected = new LinkedList<Usuario>();
- 		
-		for(Pedido item:pedidos)
-		{
-			LocalDateTime other = item.getFecha();
-			
-			boolean isOld = true;
-			
-			if(other!=null)
-			{
-				isOld = now.isAfter(other);
-			}
-			else
-			{
-				log.info("[AVISO] Fecha en pedidos nula");
-			}
-			
-			if(isOld)
-			{
-				Usuario usuario = item.getUsuarioPedido();
-				usuario.removePedidos(item);
-				
-				toDelete.add(item);
-				affected.add(usuario);
-			}
-		}
-		
-		if(affected.isEmpty() || toDelete.isEmpty())
-		{
-			log.info("[ADMIN] -- /schedule -- No se han encontrado pedidos a borrar");
-		}
-		else
-		{
-			log.info("[ADMIN] -- /schedule -- Se han borrado {} pedidos obsoletos",toDelete.size());
-			this.pedidoRepo.deleteAll(toDelete);
-			this.pedidoRepo.flush();
-			this.userRepo.saveAll(affected);
-			this.userRepo.flush();
-		}
-		
-
-	}
+//	@Scheduled(fixedRate = 5 * 60 * 1000) // 4 minutos y medio
+//	@Transactional
+//	public void deleteOldOrders()
+//	{
+//		LocalDateTime now = LocalDateTime.now().minusDays(45);
+//		log.info("[ADMIN] -- /schedule -- Comienzo del proceso de eliminación de pedidos obsoletos");
+//		List<Pedido> pedidos = this.pedidoRepo.findAll();
+//		List<Pedido> toDelete = new LinkedList<Pedido>();
+//		List<Usuario> affected = new LinkedList<Usuario>();
+// 		
+//		for(Pedido item:pedidos)
+//		{
+//			LocalDateTime other = item.getFecha();
+//			
+//			boolean isOld = true;
+//			
+//			if(other!=null)
+//			{
+//				isOld = now.isAfter(other);
+//			}
+//			else
+//			{
+//				log.info("[AVISO] Fecha en pedidos nula");
+//			}
+//			
+//			if(isOld)
+//			{
+//				Usuario usuario = item.getUsuarioPedido();
+//				usuario.removePedidos(item);
+//				
+//				toDelete.add(item);
+//				affected.add(usuario);
+//			}
+//		}
+//		
+//		if(affected.isEmpty() || toDelete.isEmpty())
+//		{
+//			log.info("[ADMIN] -- /schedule -- No se han encontrado pedidos a borrar");
+//		}
+//		else
+//		{
+//			log.info("[ADMIN] -- /schedule -- Se han borrado {} pedidos obsoletos",toDelete.size());
+//			this.pedidoRepo.deleteAll(toDelete);
+//			this.pedidoRepo.flush();
+//			this.userRepo.saveAll(affected);
+//			this.userRepo.flush();
+//		}
+//		
+//
+//	}
 }

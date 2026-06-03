@@ -82,8 +82,7 @@ public class ConfiguradorCampoarasApplication implements CommandLineRunner{
 			superUser.setUuid(uuid.toString());
 			superUser.setEmail(encryptor.encrypt(CPConstants.ADMIN_MAIL));
 			superUser.setUsername(encryptor.encrypt(CPConstants.ADMIN_NAME[0]));
-//			superUser.setPassword(passwordEncoder.encode(CPConstants.ADMIN_PASS[0]));
-			superUser.setPassword(passwordEncoder.encode("Prueba12345_"));
+			superUser.setPassword(passwordEncoder.encode(CPConstants.ADMIN_PASS[0]));
 			superUser.setDescuento(0);
 			superUser.setComercial(null);
 			superUser.setUSRToken("USR-"+UUID.randomUUID().toString().substring(0,8));
@@ -91,40 +90,47 @@ public class ConfiguradorCampoarasApplication implements CommandLineRunner{
 			
 			this.userCreator.save(superUser);
 			
+			Usuario superUser2 = new Usuario();
+			uuid = UUID.randomUUID();
+			
+			superUser2.setUuid(uuid.toString());
+			superUser2.setEmail(encryptor.encrypt(CPConstants.ADMIN_MAIL_2[0]));
+			superUser2.setUsername(encryptor.encrypt(CPConstants.ADMIN_NAME_2[0]));
+			superUser2.setPassword(passwordEncoder.encode(CPConstants.ADMIN_PASS_2[0]));
+			superUser2.setDescuento(0);
+			superUser2.setComercial(null);
+			superUser2.setUSRToken("USR-"+UUID.randomUUID().toString().substring(0,8));
+			superUser2.setRol(this.rolCreator.findByNombre(CPConstants.SUPADMIN_ROLE));
+			
+			this.userCreator.save(superUser2);
+			
+			Usuario superUser3 = new Usuario();
+			uuid = UUID.randomUUID();
+			
+			superUser3.setUuid(uuid.toString());
+			superUser3.setEmail(encryptor.encrypt(CPConstants.ADMIN_MAIL_3[0]));
+			superUser3.setUsername(encryptor.encrypt(CPConstants.ADMIN_NAME_3[0]));
+			superUser3.setPassword(passwordEncoder.encode(CPConstants.ADMIN_PASS_3[0]));
+			superUser3.setDescuento(0);
+			superUser3.setComercial(null);
+			superUser3.setUSRToken("USR-"+UUID.randomUUID().toString().substring(0,8));
+			superUser3.setRol(this.rolCreator.findByNombre(CPConstants.SUPADMIN_ROLE));
+			
+			this.userCreator.save(superUser2);
+			
 			log.info("[ADMIN] Creacion de super usuario");
-			
-			Usuario testUser = new Usuario();
-			uuid = UUID.randomUUID();
-			
-			testUser.setUuid(uuid.toString());
-			testUser.setEmail(this.encryptor.encrypt("pruiz@a3com.es"));
-			testUser.setPassword(passwordEncoder.encode("Prueba12345_"));
-			testUser.setUsername(this.encryptor.encrypt("Pablo Ruiz"));
-			testUser.setDescuento(0);
-			testUser.setComercial(null);
-			testUser.setUSRToken("USR-"+UUID.randomUUID().toString().substring(0,8));
-			testUser.setRol(this.rolCreator.findByNombre(CPConstants.ADMIN_ROLE));
-			
-			this.userCreator.save(testUser);
-			
-			Usuario testUser2 = new Usuario();
-			uuid = UUID.randomUUID();
-			
-			testUser2.setUuid(uuid.toString());
-			testUser2.setEmail(this.encryptor.encrypt("prueba@a3com.es"));
-			testUser2.setPassword(passwordEncoder.encode("Prueba12345_"));
-			testUser2.setUsername(this.encryptor.encrypt("Usuario Prueba"));
-			testUser2.setDescuento(0);
-			testUser2.setComercial(null);
-			testUser2.setUSRToken("USR-"+UUID.randomUUID().toString().substring(0,8));
-			testUser2.setRol(this.rolCreator.findByNombre(CPConstants.VER_ROLE));
-			
-			this.userCreator.save(testUser2);
 		}
 		
 		
 		log.info("[ADMIN] Destruccion de valores sensibles");
-		
+		CPConstants.ADMIN_NAME[0] = "";
+		CPConstants.ADMIN_PASS[0] = "";
+		CPConstants.ADMIN_MAIL_2[0] = "";
+		CPConstants.ADMIN_NAME_2[0] = "";
+		CPConstants.ADMIN_PASS_2[0] = "";
+		CPConstants.ADMIN_MAIL_3[0] = "";
+		CPConstants.ADMIN_NAME_3[0] = "";
+		CPConstants.ADMIN_PASS_3[0] = "";
 	}
 
 }
