@@ -116,7 +116,7 @@ public class ConfiguradorCampoarasApplication implements CommandLineRunner{
 			superUser3.setUSRToken("USR-"+UUID.randomUUID().toString().substring(0,8));
 			superUser3.setRol(this.rolCreator.findByNombre(CPConstants.SUPADMIN_ROLE));
 			
-			this.userCreator.save(superUser2);
+			this.userCreator.save(superUser3);
 			
 			log.info("[ADMIN] Creacion de super usuario");
 		}
