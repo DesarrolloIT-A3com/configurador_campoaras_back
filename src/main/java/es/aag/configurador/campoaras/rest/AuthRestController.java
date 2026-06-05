@@ -110,7 +110,7 @@ public class AuthRestController
 			ResponseCookie accessCookie = ResponseCookie.from("access_token",tokens.getAccessToken())
 					.httpOnly(true)
 					.secure(true)
-					.sameSite("Lax")
+					.sameSite("None")
 					.path("/")
 					.maxAge(tokens.getAccessExpire()).build();
 			
@@ -118,7 +118,7 @@ public class AuthRestController
 			ResponseCookie refreshCookie = ResponseCookie.from("refresh_token",tokens.getRefreshToken())
 					.httpOnly(true)
 					.secure(true)
-					.sameSite("Lax")
+					.sameSite("None")
 					.path("/")
 					.maxAge(tokens.getRefreshExpire()).build();
 			
@@ -159,7 +159,7 @@ public class AuthRestController
 	        ResponseCookie accessCookie = ResponseCookie.from("access_token", "")
 	                .httpOnly(true)
 	                .secure(true)   // Igual que en login
-	                .sameSite("Lax")
+	                .sameSite("None")
 	                .path("/")
 	                .maxAge(0)       // Esto elimina la cookie del navegador
 	                .build();
@@ -168,7 +168,7 @@ public class AuthRestController
 	        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", "")
 	                .httpOnly(true)
 	                .secure(true)
-	                .sameSite("Lax")
+	                .sameSite("None")
 	                .path("/")
 	                .maxAge(0)
 	                .build();
@@ -240,7 +240,7 @@ public class AuthRestController
 	        ResponseCookie accessCookie = ResponseCookie.from("access_token", tokens.getAccessToken())
 	                .httpOnly(true)
 	                .secure(true)
-	                .sameSite("Lax")
+	                .sameSite("None")
 	                .path("/")
 	                .maxAge(tokens.getAccessExpire()).build();
 	        
@@ -248,7 +248,7 @@ public class AuthRestController
 		ResponseCookie refreshCookie = ResponseCookie.from("refresh_token",tokens.getRefreshToken())
 				.httpOnly(true)
 				.secure(true)
-				.sameSite("Lax")
+				.sameSite("None")
 				.path("/")
 				.maxAge(tokens.getRefreshExpire()).build();
 
