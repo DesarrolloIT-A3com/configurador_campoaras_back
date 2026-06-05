@@ -880,7 +880,7 @@ public class AdminService
 	    this.productoRepo.flush();
 	    
 	    
-	 // IMPORTACION DE CONFIGURACIONES - Versión mejorada
+	 // IMPORTACION DE CONFIGURACIONES
 
 	    List<Configuracion> configuraciones = new LinkedList<Configuracion>();
 
@@ -908,12 +908,12 @@ public class AdminService
 	            configuracion.setReferencia((String) item.get("referencia"));
 	            
 	            // Campos numéricos (pueden ser Integer, Long, etc.)
-	            configuracion.setFondo(item.get("fondo") != null ? ((Number) item.get("fondo")).intValue() : null);
-	            configuracion.setAncho(item.get("ancho") != null ? ((Number) item.get("ancho")).intValue() : null);
-	            configuracion.setAlto(item.get("alto") != null ? ((Number) item.get("alto")).intValue() : null);
-	            configuracion.setAltoMax(item.get("altoMax") != null ? ((Number) item.get("altoMax")).intValue() : null);
-	            configuracion.setFondoMin(item.get("fondoMin") != null ? ((Number) item.get("fondoMin")).intValue() : null);
-	            configuracion.setFondoMax(item.get("fondoMax") != null ? ((Number) item.get("fondoMax")).intValue() : null);
+	            configuracion.setFondo(item.get("fondo") != null ? ((Number) item.get("fondo")).floatValue() : null);
+	            configuracion.setAncho(item.get("ancho") != null ? ((Number) item.get("ancho")).floatValue() : null);
+	            configuracion.setAlto(item.get("alto") != null ? ((Number) item.get("alto")).floatValue() : null);
+	            configuracion.setAltoMax(item.get("altoMax") != null ? ((Number) item.get("altoMax")).floatValue() : null);
+	            configuracion.setFondoMin(item.get("fondoMin") != null ? ((Number) item.get("fondoMin")).floatValue() : null);
+	            configuracion.setFondoMax(item.get("fondoMax") != null ? ((Number) item.get("fondoMax")).floatValue() : null);
 	            
 	            // Campos Float
 	            configuracion.setPrecioMedidaFondoEsp(item.get("precioMedidaFondoEsp") != null ? 
