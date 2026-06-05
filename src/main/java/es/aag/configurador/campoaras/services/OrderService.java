@@ -577,7 +577,7 @@ public class OrderService
 			throw new CPException(400,"Datos inválidos");
 		}
 		
-		this.mailService.sendOrderMail(pdfBytes, username, referencia, pedido.getFecha(), "desarrolloit@a3com.es", usuario.getUSRToken(), seguridad);
+		this.mailService.sendOrderMail(pdfBytes, username, referencia, pedido.getFecha(), CPConstants.ORDER_MAIL, usuario.getUSRToken(), seguridad);
 		
 		log.info("[ACCION -- /order-proposal/send -- {} Ha enviado el pedido {} correctamente a fábrica con permiso de {} -- {}",usuario.getUSRToken(),uuid,usuario.getRol().getNombre(),seguridad);
 		

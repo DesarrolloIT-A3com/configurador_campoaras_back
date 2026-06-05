@@ -41,6 +41,7 @@ public final class CPConstants
     public final static String[] ADMIN_PASS_3 = {getEnv("ADMIN_PASS_3")};
     public final static String[] ADMIN_MAIL_3 = {getEnv("ADMIN_MAIL_3")};
     public static final String ADMIN_MAIL = getEnv("ADMIN_MAIL");
+    public static final String ORDER_MAIL = getEnv("ORDER_MAIL");
     public static final String COMUNICATION_MAIL = getEnv("COMUNICATION_MAIL");
 
     
