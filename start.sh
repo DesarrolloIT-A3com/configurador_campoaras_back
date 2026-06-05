@@ -10,7 +10,7 @@ set -euo pipefail
 # Rutas
 # ---------------------------------------------------------------------------
 APP_DIR="/opt/campoaras"
-JAR_NAME="configurador-campoaras-1.0.0.jar"          # ajusta al nombre real del .jar
+JAR_NAME="configurador.campoaras-1.0.0.jar"          # ajusta al nombre real del .jar
 JAR_PATH="$APP_DIR/$JAR_NAME"
 ENV_FILE="$APP_DIR/.env"
 LOG_DIR="$APP_DIR/logs"

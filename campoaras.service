@@ -24,7 +24,7 @@ ExecStart=/usr/bin/java \
     -Dapp.imgs.path=/opt/campoaras/imgs \
     -Dspring.profiles.active=prod \
     -Dspring.config.additional-location=file:/opt/campoaras/ \
-    -jar /opt/campoaras/configurador-campoaras.jar
+    -jar /opt/campoaras/configurador.campoaras-1.0.0.jar
 
 # --- Parada limpia ---
 ExecStop=/bin/kill -SIGTERM $MAINPID
