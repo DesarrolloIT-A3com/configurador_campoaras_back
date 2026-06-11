@@ -57,6 +57,10 @@ public class SeleccionDTO
 	
 	private int cantidad;
 	
+	private String observaciones;
+	
+	private Boolean isEspecial;
+	
 	private Boolean bulk;
 
 	private String referenciaBulk;

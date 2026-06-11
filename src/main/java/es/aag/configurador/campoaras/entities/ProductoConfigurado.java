@@ -115,6 +115,9 @@ public class ProductoConfigurado
 	@Column
 	private int cantidad;
 	
+	@Column
+	private String observaciones;
+	
 	@Column(nullable = false)
 	private LocalDateTime fecha;
 }
