@@ -177,6 +177,9 @@ public class OrderService
 					float ancho = item.getAncho() != null ? item.getAncho() : item.getConfiguracion().getAncho();
 					float alto = item.getAlto() != null ? item.getAlto() : item.getConfiguracion().getAlto();
 					
+					// Si existen medidas especiales se marca que la configuración presenta la etiqueta ESP
+					boolean isEspecial = fondo!=item.getConfiguracion().getFondo() || ancho!=item.getConfiguracion().getAncho() || alto!=item.getConfiguracion().getAlto();
+					
 					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
 					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
 					
@@ -187,7 +190,14 @@ public class OrderService
 						extrasDecrypt.add(this.encryptor.decrypt(extra));
 					}
 					
-					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta, extrasDecrypt,precioFinal, cantidad,null,null);
+					String observaciones = "";
+					
+					if(item.getObservaciones()!=null)
+					{
+						observaciones = this.encryptor.decrypt(item.getObservaciones());
+					}
+					
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta, extrasDecrypt,precioFinal, cantidad, observaciones,isEspecial,null,null);
 					selecciones[index] = seleccion;
 					
 					if(fecha==null)
@@ -422,6 +432,9 @@ public class OrderService
 					float ancho = seleccion.getAncho()!=null ? seleccion.getAncho() : seleccion.getConfiguracion().getAncho();
 					float alto = seleccion.getAlto()!=null ? seleccion.getAlto() : seleccion.getConfiguracion().getAlto();
 					
+					// Si existen medidas especiales se marca que la configuración presenta la etiqueta ESP
+					boolean isEspecial = fondo!=seleccion.getConfiguracion().getFondo() || ancho!=seleccion.getConfiguracion().getAncho() || alto!=seleccion.getConfiguracion().getAlto();
+					
 					// Conversión a milimetros
 					fondo = fondo * 10;
 					ancho = ancho * 10;
@@ -439,8 +452,15 @@ public class OrderService
 					
 					String serie = this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getProducto().getNombre()) +" "+this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getVariante());
 					
+					String observaciones = "";
+					
+					if(seleccion.getObservaciones()!=null)
+					{
+						observaciones = this.encryptor.decrypt(seleccion.getObservaciones());
+					}
+					
 					SeleccionDTO dto = new SeleccionDTO(uuidSel,referenciaSel,this.encryptor.decrypt(usuario.getUsername()),serie,fondo,ancho,alto,null,armazon,colorArmazon,null,frente,acabadoFrente,
-							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,extrasDecrypt,precioFinal,cantidad,null,null);
+							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,extrasDecrypt,precioFinal,cantidad,observaciones,isEspecial,null,null);
 					
 					selecciones.add(dto);
 				}
