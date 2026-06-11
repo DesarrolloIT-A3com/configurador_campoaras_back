@@ -29,6 +29,9 @@ public class Color
 	@Column(nullable = false,unique=true)
 	private String nombre;
 	
+	@Column
+	private int orden = 0;
+	
 	@ManyToMany(mappedBy = "colores")
 	private Set<Acabado> acabados = new HashSet<>();
 	

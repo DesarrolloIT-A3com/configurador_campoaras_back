@@ -23,5 +23,7 @@ public class ResponseFrente
 	
 	private String [] productos;
 	
+	private Integer orden;
+	
 	private byte[] img;
 }

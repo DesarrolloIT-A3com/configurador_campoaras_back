@@ -793,6 +793,41 @@ public class ManagmentService
 					}
 				}
 				
+				int orden = 0;
+				
+				if(body.getOrden()!=null)
+				{
+					orden = body.getOrden();
+				}
+				
+				List<Acabado> acabados = this.acabadoRepo.findAll();
+				
+				boolean ordenRepetido = false;
+				
+				for(Acabado item:acabados)
+				{
+					if(item.getOrden()==orden)
+					{
+						ordenRepetido = true;
+						break;
+					}
+				}
+				
+				if(ordenRepetido)
+				{
+					for(Acabado item:acabados)
+					{
+						if(item.getOrden()>=orden)
+						{
+							item.setOrden(item.getOrden()+1);
+						}
+					}
+				}
+				
+				this.acabadoRepo.saveAll(acabados);
+				
+				acabado.setOrden(orden);
+				
 				this.transformFile(img, acabado.getUuid(), rol, "/acabados", usrToken, seguridad);
 				
 				log.info("[ADMIN] -- /acabados -- {} Ha añadido el producto {} a la base de datos con permiso de {} -- {}",usrToken,acabado.getUuid(),rol,seguridad);
@@ -862,9 +897,11 @@ public class ManagmentService
 						colores = new String[0];
 					}
 					
+					int orden = acabado.getOrden();
+										
 					byte [] imgByte = this.loadImg(acabado.getUuid(), "/acabados", rol, seguridad, usrToken);
 					
-					response.add(new ResponseAcabado(acabado.getUuid(),nombre,tiposEncrypt,colores,imgByte));
+					response.add(new ResponseAcabado(acabado.getUuid(),nombre,tiposEncrypt,colores,orden,imgByte));
 				}
 				
 				log.info("[ACCION] -- /acabados -- {} Ha solicitado un listado de acabados con permiso de {} -- {}",usrToken,rol,seguridad);		
@@ -915,6 +952,44 @@ public class ManagmentService
 						}
 					}
 				}
+				
+				int orden = 0;
+				
+				if(body.getOrden()!=null)
+				{
+					orden = body.getOrden();
+				}
+				
+				if(acabado.getOrden()!=orden)
+				{
+					List<Acabado> acabados = this.acabadoRepo.findAll();
+					
+					boolean ordenRepetido = false;
+					
+					for(Acabado item:acabados)
+					{
+						if(item.getOrden()==orden)
+						{
+							ordenRepetido = true;
+							break;
+						}
+					}
+					
+					if(ordenRepetido)
+					{
+						for(Acabado item:acabados)
+						{
+							if(item.getOrden()>=orden)
+							{
+								item.setOrden(item.getOrden()+1);
+							}
+						}
+					}
+					
+					this.acabadoRepo.saveAll(acabados);
+				}
+				
+				acabado.setOrden(orden);
 				
 				this.transformFile(img, acabado.getUuid(), rol, "/acabados", usrToken, seguridad);
 				
@@ -1094,9 +1169,43 @@ public class ManagmentService
 					throw new CPException(409,"Datos existentes");
 				}
 				
+				int orden = 0;
+				
+				if(body.getOrden()!=null)
+				{
+					orden = body.getOrden();
+				}
+				
+				List<Color> colores = this.colorRepo.findAll();
+				
+				boolean ordenRepetido = false;
+				
+				for(Color item:colores)
+				{
+					if(item.getOrden()==orden)
+					{
+						ordenRepetido = true;
+						break;
+					}
+				}
+				
+				if(ordenRepetido)
+				{
+					for(Color item:colores)
+					{
+						if(item.getOrden()>=orden)
+						{
+							item.setOrden(item.getOrden()+1);
+						}
+					}
+				}
+				
+				this.colorRepo.saveAll(colores);
+				
 				color = new Color();
 				color.setUuid(UUID.randomUUID().toString());
 				color.setNombre(this.encryptor.encrypt(body.getNombre()));
+				color.setOrden(orden);
 				
 				this.colorRepo.save(color);
 				this.colorRepo.flush();
@@ -1169,7 +1278,9 @@ public class ManagmentService
 					{
 						byte [] imgBytes = this.loadImg(color.getUuid(), "/colores", rol, seguridad, usrToken);
 						
-						response.add(new ResponseColor(uuidColor,nombre,acabados,imgBytes));
+						int orden = color.getOrden();
+						
+						response.add(new ResponseColor(uuidColor,nombre,acabados,orden,imgBytes));
 					}
 					
 					filter = false;
@@ -1229,6 +1340,43 @@ public class ManagmentService
 					}
 				}
 				
+				int orden = 0;
+				
+				if(body.getOrden()!=null)
+				{
+					orden = body.getOrden();
+				}
+				
+				if(color.getOrden()!=orden)
+				{
+					List<Color> colores = this.colorRepo.findAll();
+					
+					boolean ordenRepetido = false;
+					
+					for(Color item:colores)
+					{
+						if(item.getOrden()==orden)
+						{
+							ordenRepetido = true;
+							break;
+						}
+					}
+					
+					if(ordenRepetido)
+					{
+						for(Color item:colores)
+						{
+							if(item.getOrden()>=orden)
+							{
+								item.setOrden(item.getOrden()+1);
+							}
+						}
+					}
+					
+					this.colorRepo.saveAll(colores);
+				}
+				
+				color.setOrden(orden);
 
 				this.transformFile(img, color.getUuid(), "/colores", rol, usrToken, seguridad);
 				
@@ -1420,6 +1568,41 @@ public class ManagmentService
 				frente.setRegleta(body.isRegleta());
 				frente.setTirador(body.isTirador());
 				
+				int orden = 0;
+				
+				if(body.getOrden()!=null)
+				{
+					orden = body.getOrden();
+				}
+				
+				List<Frente> frentes = this.frenteRepo.findAll();
+				
+				boolean ordenRepetido = false;
+				
+				for(Frente item:frentes)
+				{
+					if(item.getOrden()==orden)
+					{
+						ordenRepetido = true;
+						break;
+					}
+				}
+				
+				if(ordenRepetido)
+				{
+					for(Frente item:frentes)
+					{
+						if(item.getOrden()>=orden)
+						{
+							item.setOrden(item.getOrden()+1);
+						}
+					}
+				}
+				
+				this.frenteRepo.saveAll(frentes);
+				
+				frente.setOrden(orden);
+				
 				this.frenteRepo.save(frente);
 				this.frenteRepo.flush();
 				
@@ -1555,8 +1738,10 @@ public class ManagmentService
 					if(filter)
 					{
 						byte [] imgBytes = this.loadImg(uuidFrente, "/frentes", rol, seguridad, usrToken);
+						
+						int orden = frente.getOrden();
 						 
-						response.add(new ResponseFrente(uuidFrente, nombre, referencia, regleta, tirador,acabados,acabadosExtension,productos,imgBytes));
+						response.add(new ResponseFrente(uuidFrente, nombre, referencia, regleta, tirador,acabados,acabadosExtension,productos,orden,imgBytes));
 					}
 					
 					filter = false;
@@ -1680,6 +1865,44 @@ public class ManagmentService
 						producto.removeProducto(frente);
 					}
 				}
+				
+				int orden = 0;
+				
+				if(body.getOrden()!=null)
+				{
+					orden = body.getOrden();
+				}
+				
+				if(frente.getOrden()!=orden)
+				{
+					List<Frente> frentes = this.frenteRepo.findAll();
+					
+					boolean ordenRepetido = false;
+					
+					for(Frente item:frentes)
+					{
+						if(item.getOrden()==orden)
+						{
+							ordenRepetido = true;
+							break;
+						}
+					}
+					
+					if(ordenRepetido)
+					{
+						for(Frente item:frentes)
+						{
+							if(item.getOrden()>=orden)
+							{
+								item.setOrden(item.getOrden()+1);
+							}
+						}
+					}
+					
+					this.frenteRepo.saveAll(frentes);
+				}
+				
+				frente.setOrden(orden);
 				
 				this.transformFile(img, frente.getUuid(), rol, "/frentes", usrToken, seguridad);
 				

@@ -15,5 +15,8 @@ public class ResponseAcabado
 	
 	private String [] colores;
 	
+	private Integer orden;
+	
 	private byte[] img;
+	
 }
