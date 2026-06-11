@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,6 +32,7 @@ import es.aag.configurador.campoaras.entities.Color;
 import es.aag.configurador.campoaras.entities.Configuracion;
 import es.aag.configurador.campoaras.entities.Frente;
 import es.aag.configurador.campoaras.entities.Producto;
+import es.aag.configurador.campoaras.entities.Rol;
 import es.aag.configurador.campoaras.entities.Serie;
 import es.aag.configurador.campoaras.entities.Usuario;
 import es.aag.configurador.campoaras.repositories.IAcabadoRepository;
@@ -99,6 +101,120 @@ public class AdminService
 		this.validation = new Validations();
 	}
 	
+	public void createUser(UserGetDTO body,String rol,String seguridad,String usrToken) throws CPException
+	{
+		List<Usuario> usuarios = this.userRepo.findAll();
+		
+		final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+		final Pattern pattern = Pattern.compile(EMAIL_REGEX);
+		
+		boolean repeated = false;
+		
+		for(Usuario usuario:usuarios)
+		{
+			if(this.encryptor.decrypt(usuario.getEmail()).equals(body.getEmail()))
+			{
+				repeated = true;
+				break;
+			}
+		}
+		
+		if(repeated)
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario usando un email repetido con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(409,"Datos existentes");
+		}
+		
+		if(body.getEmail() == null && !pattern.matcher(body.getEmail()).matches())
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario usando un email inválido con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		if(body.getUsername()==null)
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario usando un username null con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		else if(body.getUsername().isBlank())
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario usando un username vacío con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		if(body.getRol()==null)
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario usando un rol vacío con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		if(body.getPassword().equals(CPConstants.MAP_DEFAULT_VALUE))
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario introduciendo una contraseña vacía con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		String uuid = UUID.randomUUID().toString();
+		String email = this.encryptor.encrypt(body.getEmail());
+		String username = this.encryptor.encrypt(body.getUsername());
+		String password = this.encoder.encode(body.getPassword());
+		float descuento = body.getDescuento();
+		float segundoDescuento = body.getSegundoDescuento();
+		
+		Rol userRol = this.rolRepo.findByNombre(body.getRol());
+		boolean verificado = !body.getRol().equals(CPConstants.VER_ROLE);
+		
+		if(userRol==null)
+		{
+			userRol = this.rolRepo.findByNombre(CPConstants.VER_ROLE);
+			verificado = false;
+		}
+		
+		String comercial = body.getComercial();
+		boolean found = false;
+		
+		if(comercial!=null)
+		{
+			for(Usuario item:usuarios)
+			{
+				if(comercial.equals(this.encryptor.decrypt(item.getComercial())))
+				{
+					found = true;
+					break;
+				}
+			}
+			
+			if(!found)
+			{
+				comercial = null;
+			}
+			else
+			{
+				comercial = this.encryptor.encrypt(comercial);
+			}
+		}
+		
+		String token = "USR-" + UUID.randomUUID().toString().substring(0,8); 
+		
+		Usuario usuario = new Usuario();
+		
+		usuario.setUuid(uuid);
+		usuario.setEmail(email);
+		usuario.setUsername(username);
+		usuario.setPassword(password);
+		usuario.setDescuento(descuento);
+		usuario.setComercial(comercial);
+		usuario.setSegundoDescuento(segundoDescuento);
+		usuario.setVerificado(verificado);
+		usuario.setRol(userRol);
+		usuario.setUSRToken(token);
+		
+		log.info("[ADMIN] -- create-user -- {} Ha creado el usuario {} con permiso de {} -- {}",usrToken,token,rol,seguridad);
+		
+		this.userRepo.save(usuario);
+		this.userRepo.flush();		
+	}
+	
 	/**
 	 * Metodo que devuelve los usuarios registrados en la app, dependiendo del rol se devolverán determinados usuarios
 	 * @param rol
@@ -119,7 +235,7 @@ public class AdminService
 		
 		for(Usuario user:usuarios)
 		{
-			UserGetDTO dto = new UserGetDTO(user.getUuid(),this.encryptor.decrypt(user.getEmail()),this.encryptor.decrypt(user.getUsername()),user.getDescuento(),user.getSegundoDescuento(),this.encryptor.decrypt(user.getComercial()),user.getAcceso(),user.getRol().getNombre(),!user.getRol().getNombre().equals(CPConstants.VER_ROLE));
+			UserGetDTO dto = new UserGetDTO(user.getUuid(),this.encryptor.decrypt(user.getEmail()),this.encryptor.decrypt(user.getUsername()),null,user.getDescuento(),user.getSegundoDescuento(),this.encryptor.decrypt(user.getComercial()),user.getAcceso(),user.getRol().getNombre(),!user.getRol().getNombre().equals(CPConstants.VER_ROLE));
 			
 			String comercialEmail = this.encryptor.decrypt(usuario.getEmail());
 			String userEmail = "";
