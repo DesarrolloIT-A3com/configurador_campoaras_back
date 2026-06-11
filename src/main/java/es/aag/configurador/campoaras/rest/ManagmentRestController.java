@@ -88,7 +88,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/products", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/products", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/products", usuario.getUSRToken());
 			
 			this.security.validateImg(img, null, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -158,7 +158,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/products", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/products", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/products", usuario.getUSRToken());
 			
 			this.service.manageProduct(producto, uuid, img,CPConstants.PATCH, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -192,7 +192,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/products", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/products", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/products", usuario.getUSRToken());
 			
 			this.service.manageProduct(null, uuid, null,CPConstants.DELETE, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -228,7 +228,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/series", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/series", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/series", usuario.getUSRToken());
 			
 			this.security.validateImg(img, "/series", usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -301,7 +301,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/series", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/series", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/series", usuario.getUSRToken());
 			
 			this.service.manageSerie(serie, uuid, img,productUuid, CPConstants.PATCH, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -335,7 +335,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/series", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/series", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/series", usuario.getUSRToken());
 			
 			this.service.manageSerie(null, uuid, null, null,CPConstants.DELETE, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -370,7 +370,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/adabados", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/acabados", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/acabados", usuario.getUSRToken());
 			
 			this.service.manageAcabado(acabado, null, img,CPConstants.POST, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -439,7 +439,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/acabados", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/acabados", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/acabados", usuario.getUSRToken());
 			
 			this.service.manageAcabado(acabado, uuid, img,CPConstants.PATCH, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -473,7 +473,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/acabados", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/acabados", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/acabados", usuario.getUSRToken());
 			
 			this.service.manageAcabado(null, uuid, null,CPConstants.DELETE, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -508,7 +508,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/colores", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/colores", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/colores", usuario.getUSRToken());
 			
 			this.service.manageColor(body, null, img,CPConstants.POST, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -578,7 +578,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/colores", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/colores", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/colores", usuario.getUSRToken());
 			
 			this.service.manageColor(color, uuid, img,CPConstants.PATCH, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -612,7 +612,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/colores", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/colores", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/colores", usuario.getUSRToken());
 			
 			this.service.manageColor(null, uuid, null,CPConstants.DELETE, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -647,7 +647,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/frentes", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/frentes", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/frentes", usuario.getUSRToken());
 			
 			this.service.manageFrente(body, null, img,CPConstants.POST, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -717,7 +717,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/frentes", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/frentes", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/frentes", usuario.getUSRToken());
 			
 			this.service.manageFrente(frente, uuid, img,CPConstants.PATCH, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -751,7 +751,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/frentes", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/frentes", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/frentes", usuario.getUSRToken());
 			
 			this.service.manageFrente(null, uuid, null,CPConstants.DELETE, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -785,7 +785,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/configuracion", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/configuracion", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/configuracion", usuario.getUSRToken());
 			
 			this.configService.manageConfiguracion(config, null, null,CPConstants.POST, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -853,7 +853,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/configuracion", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/configuracion", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/configuracion", usuario.getUSRToken());
 			
 			this.configService.manageConfiguracion(config, referencia, null,CPConstants.PATCH, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -887,7 +887,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/configuracion", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/configuracion", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/configuracion", usuario.getUSRToken());
 			
 			this.configService.manageConfiguracion(null, referencia, null,CPConstants.DELETE, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -920,7 +920,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/export", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/export", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/export", usuario.getUSRToken());
 		
 			String response = this.configService.export(uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
@@ -1004,7 +1004,7 @@ public class ManagmentRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/orders", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/orders", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/orders", usuario.getUSRToken());
 			
 			this.orderService.deletePedido(uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
