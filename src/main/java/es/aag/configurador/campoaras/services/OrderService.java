@@ -3,9 +3,11 @@ package es.aag.configurador.campoaras.services;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -16,20 +18,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import es.aag.configurador.campoaras.dto.OrderDTO;
 import es.aag.configurador.campoaras.dto.ResponseSeleccion;
 import es.aag.configurador.campoaras.dto.SeleccionDTO;
 import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
+import es.aag.configurador.campoaras.entities.Frente;
 import es.aag.configurador.campoaras.entities.Pedido;
+import es.aag.configurador.campoaras.entities.PedidoBackup;
 import es.aag.configurador.campoaras.entities.ProductoConfigurado;
 import es.aag.configurador.campoaras.entities.Usuario;
 import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
+import es.aag.configurador.campoaras.repositories.IPedidoBackupRepository;
 import es.aag.configurador.campoaras.repositories.IPedidoRepository;
 import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
 import es.aag.configurador.campoaras.utils.EstadoPedido;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class OrderService 
@@ -53,6 +61,9 @@ public class OrderService
 	
 	@Autowired
 	private IPedidoRepository pedidoRepo;
+	
+	@Autowired
+	private IPedidoBackupRepository pedidoBakRepo;
 	
 	
 	public List<ResponseSeleccion> getSelecciones(Boolean isEnd,String userUuid,String rol,String seguridad,String usrToken)
@@ -199,15 +210,6 @@ public class OrderService
 					
 					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta, extrasDecrypt,precioFinal, cantidad, observaciones,isEspecial,null,null);
 					selecciones[index] = seleccion;
-					
-					if(fecha==null)
-					{
-						fecha = item.getFecha();
-					}
-					else if(fecha.isAfter(item.getFecha()))
-					{
-						fecha = item.getFecha();
-					}
 				}
 				else
 				{
@@ -216,6 +218,14 @@ public class OrderService
 				
 				index++;
 				
+			}
+			if(bulk.getFecha()==null)
+			{
+				fecha=LocalDateTime.now();
+			}
+			else
+			{
+				fecha=bulk.getFecha();
 			}
 			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario,referenciaBulk,selecciones,fecha,bulk.isEnd());
 			
@@ -311,7 +321,8 @@ public class OrderService
 		
 		Pedido pedido = new Pedido();
 		List<String> productoList = new LinkedList<String>();
-		
+		List<ProductoConfigurado> selecciones = new LinkedList<ProductoConfigurado>();
+		  
 		for(String producto:body.getProductos())
 		{
 			Optional<ProductoConfigurado> optSeleccion = this.seleccionRepo.findById(producto);
@@ -323,6 +334,7 @@ public class OrderService
 			}
 			
 			productoList.add(producto);
+			selecciones.add(optSeleccion.get());
 		}
 		
 		String uuid = UUID.randomUUID().toString();
@@ -341,6 +353,8 @@ public class OrderService
 		usuario.addPedidos(pedido);
 		this.userRepo.save(usuario);
 		this.userRepo.flush();
+		
+		this.registerPedidoBak(usuario, pedido, selecciones,rol, seguridad, usrToken);
 	}
 	
 	public List<OrderDTO> getPedidos(Usuario usuario,String rol,String seguridad,String usrToken)
@@ -474,6 +488,99 @@ public class OrderService
 		return response;
 	}
 	
+	public List<OrderDTO> getPedidosBak(Usuario usuario,String rol,String seguridad,String usrToken) throws CPException
+	{
+		List<PedidoBackup> pedidos = this.pedidoBakRepo.findByUsuarioPedidoBack(usuario);
+		List<OrderDTO> response = new LinkedList<OrderDTO>();
+		
+		for(PedidoBackup item:pedidos)
+		{
+			String uuid = item.getUuid();
+			String referencia = this.encryptor.decrypt(item.getReferencia());
+			String username = this.encryptor.decrypt(usuario.getUsername());
+			LocalDateTime fecha = item.getFecha();
+			EstadoPedido estado = item.getEstado();
+			
+			List<SeleccionDTO> selecciones = new LinkedList<SeleccionDTO>();
+			
+			for(Map<String,Object> seleccion:item.getContent())
+			{
+			    String referenciaOrder = this.encryptor.decrypt((String) seleccion.get("referencia"));
+			    
+			    Number fondoNum = (Number) seleccion.get("fondo");
+			    float fondo = fondoNum.floatValue();
+			    
+			    Number anchoNum = (Number) seleccion.get("ancho");
+			    float ancho = anchoNum.floatValue();
+			    
+			    Number altoNum = (Number) seleccion.get("alto");
+			    float alto = altoNum.floatValue();
+			    
+			    String armazon = this.encryptor.decrypt((String) seleccion.get("armazon"));
+			    String colorArmazon = this.encryptor.decrypt((String) seleccion.get("colorArmazon"));
+			    
+			    String frente = "-";
+			    String acabadoFrente = "-";
+			    String colorFrente = "-";
+			    
+			    if( !((String)(seleccion.get("frente"))).equals("-"))
+			    {
+			    	 frente = this.encryptor.decrypt((String) seleccion.get("frente"));
+				     acabadoFrente = this.encryptor.decrypt((String) seleccion.get("acabadoFrente"));
+				     colorFrente = this.encryptor.decrypt((String) seleccion.get("colorFrente"));
+			    }
+			    
+			   
+			    String acabadoRegleta = this.encryptor.decrypt((String) seleccion.get("acabadoRegleta"));
+			    String colorRegleta = this.encryptor.decrypt((String) seleccion.get("colorRegleta"));
+			    String acabadoTirador = this.encryptor.decrypt((String) seleccion.get("acabadoTirador"));
+			    String colorTirador = this.encryptor.decrypt((String) seleccion.get("colorTirador"));
+			    			    
+			    List<String> extras = new ObjectMapper().convertValue(seleccion.get("extras"), new TypeReference<List<String>>() {});
+			    
+			    List<String> extrasDecrypt = new LinkedList<>();
+			    
+			    for(String extra : extras) 
+			    {
+			        extrasDecrypt.add(this.encryptor.decrypt(extra));
+			    }
+			    
+			    String serie = this.encryptor.decrypt((String) seleccion.get("serie"));
+			    String observaciones = "";
+			    
+			    if(!((String) seleccion.get("observaciones")).isBlank())
+			    {
+			    	observaciones = this.encryptor.decrypt((String) seleccion.get("observaciones"));
+			    }
+			    			    
+			    Number precioFinalNum = (Number) seleccion.get("precioFinal");
+			    float precioFinal = precioFinalNum.floatValue();
+			    
+			    Number cantidadNum = (Number) seleccion.get("cantidad");
+			    int cantidad = cantidadNum.intValue();
+			    
+			    boolean isEspecial = (boolean) seleccion.get("isEspecial");
+			    
+			    SeleccionDTO seleccionDto = new SeleccionDTO(null, referenciaOrder, username, serie, fondo, ancho, alto, null, armazon, colorArmazon, null, frente, acabadoFrente, colorFrente, null, acabadoTirador, colorTirador, null, acabadoRegleta, colorRegleta, extrasDecrypt, precioFinal, cantidad, observaciones, isEspecial, null, null);
+			    
+			    selecciones.add(seleccionDto);
+			}
+			
+			OrderDTO order = new OrderDTO(item.getUuid(), referencia, username, fecha, null, estado, selecciones);
+			
+			if(!this.pedidoRepo.findById(uuid).isPresent())
+			{
+				response.add(order);
+			}
+			
+		}
+		
+		log.info("[ACCION] -- /order-proposal-bak -- {} Ha solicitado un listado de copias de pedido con permiso de {} -- {}",usrToken,rol,seguridad);
+		
+		return response;
+		
+	}
+	
 	public void deletePedido(String uuid,String rol,String seguridad,String usrToken) throws CPException
 	{
 		Optional<Pedido> pedidoOpt = this.pedidoRepo.findById(uuid);
@@ -496,7 +603,32 @@ public class OrderService
 		userPedido.removePedidos(pedido);
 		
 		this.userRepo.save(userPedido);
-		this.userRepo.flush();;
+		this.userRepo.flush();
+	}
+	
+	public void deletePedidoBak(String uuid,String rol,String seguridad,String usrToken) throws CPException
+	{
+		Optional<PedidoBackup> pedidoOpt = this.pedidoBakRepo.findById(uuid);
+		
+		if(!pedidoOpt.isPresent())
+		{
+			log.warn("[AVISO] -- /order-proposal-bak -- {} Ha intentado borrar una copia de pedido insxistente con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Datos inexistentes");
+		}
+		
+		PedidoBackup pedido = pedidoOpt.get();
+		
+		log.info("[ADMIN] -- /order-proposal-bak -- {} Ha borrado la copia del pedido {} de la base de datos con permiso de {} -- {}",usrToken,pedido.getUuid(),rol,seguridad);
+		
+		this.pedidoBakRepo.delete(pedido);
+		this.pedidoBakRepo.flush();
+		
+		Usuario userPedido = pedido.getUsuarioPedidoBack();
+		
+		userPedido.removePedidoBak(pedido);
+		
+		this.userRepo.save(userPedido);
+		this.userRepo.flush();
 	}
 	
 	public void actualizarEstado(OrderDTO body,String uuid,String rol,String seguridad,String usrToken) throws CPException
@@ -603,6 +735,141 @@ public class OrderService
 		
 		pedido.setEstado(EstadoPedido.CURSADO);
 		this.pedidoRepo.save(pedido);
+	}
+	
+	private void registerPedidoBak(Usuario usuario,Pedido pedido,List<ProductoConfigurado> selecciones,String rol,String seguridad,String usrToken)
+	{
+		PedidoBackup pedidoBak = new PedidoBackup();
+		
+		pedidoBak.setUuid(pedido.getUuid());
+		pedidoBak.setReferencia(pedido.getReferencia());
+		pedidoBak.setEstado(pedido.getEstado());
+		pedidoBak.setFecha(pedido.getFecha());
+		pedidoBak.setUsuarioPedidoBack(usuario);
+		
+		List<Map<String,Object>> content = new LinkedList<Map<String,Object>>();
+		
+		for(ProductoConfigurado item:selecciones)
+		{
+			Map<String,Object> selContent = new HashMap<String, Object>();
+			
+			String referencia = item.getConfiguracion().getReferencia();
+			String frente = "-";
+			String acabadoFrente = "-";
+			String colorFrente = "-";
+			
+			if(item.getFrente()!=null)
+			{
+				Frente frenteItem = item.getFrente();
+				referencia =  this.encryptor.decrypt(item.getFrente().getReferencia()) + " " + referencia;
+				frente = frenteItem.getNombre();
+				acabadoFrente = item.getAcabadoFrente().getNombre();
+				colorFrente = item.getColorFrente().getNombre();
+			}
+			
+			referencia = this.encryptor.encrypt(referencia);
+			
+			String acabadoTirador = null;
+			String acabadoRegleta = null;
+			String colorTirador = null;
+			String colorRegleta = null;
+			
+			if(item.getAcabadoTirador()!=null)
+			{
+				acabadoTirador = item.getAcabadoTirador().getNombre();
+				if(item.getColorTirador()!=null)
+				{
+					colorTirador = item.getColorTirador().getNombre();
+				}
+				else
+				{
+					colorTirador = item.getCodigoColorTirador();
+				}
+			}
+			
+			if(item.getAcabadoRegleta() != null)
+			{
+				acabadoRegleta = item.getAcabadoRegleta().getNombre();
+				if(item.getColorRegleta()!=null)
+				{
+					colorRegleta = item.getColorRegleta().getNombre();
+				}
+				else
+				{
+					colorRegleta = item.getCodigoColorTirador();
+				}
+		    }
+			
+			String colorArmazon = "Sin color";
+			
+			if(item.getCodigoColorArmazon()==null)
+			{
+				colorArmazon =  item.getColorArmazon().getNombre();
+			}
+			else
+			{
+				colorArmazon = item.getCodigoColorArmazon();
+			}
+			
+			// Estos ternarios asignan el valor las medidas del producto configurado que serían las medidas especiales, en caso de ser nulas, se asignan la de la referencia escogida
+			float fondo = item.getFondo() != null ? item.getFondo() : item.getConfiguracion().getFondo();
+			float ancho = item.getAncho() != null ? item.getAncho() : item.getConfiguracion().getAncho();
+			float alto = item.getAlto() != null ? item.getAlto() : item.getConfiguracion().getAlto();
+			
+			// Si existen medidas especiales se marca que la configuración presenta la etiqueta ESP
+			boolean isEspecial = fondo!=item.getConfiguracion().getFondo() || ancho!=item.getConfiguracion().getAncho() || alto!=item.getConfiguracion().getAlto();
+			
+			List<String> extrasDecrypt = new LinkedList<String>();
+			
+			for(String extra:item.getExtras())
+			{
+				extrasDecrypt.add(extra);
+			}
+			
+			String observaciones = "";
+			
+			if(item.getObservaciones()!=null)
+			{
+				observaciones = item.getObservaciones();
+			}
+			
+			String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
+			serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
+			serie = this.encryptor.encrypt(serie);
+			
+			selContent.put("referencia",referencia);
+			selContent.put("fondo", fondo);
+			selContent.put("ancho", ancho);
+			selContent.put("alto", alto);
+			selContent.put("armazon", item.getAcabado().getNombre());
+			selContent.put("colorArmazon", colorArmazon);
+			selContent.put("frente",frente);
+			selContent.put("acabadoFrente",acabadoFrente);
+			selContent.put("colorFrente",colorFrente);
+			selContent.put("acabadoRegleta", acabadoRegleta);
+			selContent.put("colorRegleta", colorRegleta);
+			selContent.put("acabadoTirador", acabadoTirador);
+			selContent.put("colorTirador", colorTirador);
+			selContent.put("extras", extrasDecrypt);
+			selContent.put("serie", serie);
+			selContent.put("observaciones", observaciones);
+			selContent.put("precioFinal", item.getPrecioFinal());
+			selContent.put("cantidad", item.getCantidad());
+			selContent.put("isEspecial", isEspecial);
+			
+			content.add(selContent);
+		}
+		
+		pedidoBak.setContent(content);
+		
+		usuario.addPedidoBak(pedidoBak);
+		
+		log.info("[ACCION] -- /order-proposal -- {} Ha creado una copia del pedido {} con permiso de {} -- {}",usrToken,pedido.getUuid(),rol,seguridad);
+		
+		this.pedidoBakRepo.save(pedidoBak);
+		this.pedidoBakRepo.flush();
+		this.userRepo.save(usuario);
+		this.userRepo.flush();		
 	}
 	
 }

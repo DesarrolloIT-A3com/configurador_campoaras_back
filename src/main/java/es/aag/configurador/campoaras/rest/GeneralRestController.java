@@ -205,6 +205,9 @@ public class GeneralRestController
 			
 			bulk.setEnd(true);
 			bulk.setFecha(LocalDateTime.now());
+			
+			log.info("[ACCION] -- /configure -- {} Ha finalizado la configuracion {} con permiso de {} -- {}",usuario.getUSRToken(),bulk.getUuid(),usuario.getRol().getNombre(),usuario.getUSRToken());
+			
 			this.bulkRepo.save(bulk);
 			this.bulkRepo.flush();
 			
@@ -392,6 +395,38 @@ public class GeneralRestController
 
 		}
 		
+	}
+	
+	@RequestMapping(method = RequestMethod.GET,value = "/order-proposal-bak",produces="application/json")
+	public ResponseEntity<?> getBakOrders(HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/order-proposal-bak", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/order-proposal-bak", usuario.getUSRToken());
+						
+			List<OrderDTO> response = this.orderService.getPedidosBak(usuario, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.ok().body(response);
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /configure -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+
+		}
 	}
 	
 	@RequestMapping(method = RequestMethod.POST,value = "/order-proposal/send",consumes="multipart/form-data")

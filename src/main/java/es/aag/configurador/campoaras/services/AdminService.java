@@ -28,18 +28,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.aag.configurador.campoaras.dto.UserGetDTO;
 import es.aag.configurador.campoaras.entities.Acabado;
 import es.aag.configurador.campoaras.entities.AdminVerification;
+import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
 import es.aag.configurador.campoaras.entities.Color;
 import es.aag.configurador.campoaras.entities.Configuracion;
 import es.aag.configurador.campoaras.entities.Frente;
+import es.aag.configurador.campoaras.entities.Pedido;
+import es.aag.configurador.campoaras.entities.PedidoBackup;
 import es.aag.configurador.campoaras.entities.Producto;
+import es.aag.configurador.campoaras.entities.ProductoConfigurado;
 import es.aag.configurador.campoaras.entities.Rol;
 import es.aag.configurador.campoaras.entities.Serie;
 import es.aag.configurador.campoaras.entities.Usuario;
 import es.aag.configurador.campoaras.repositories.IAcabadoRepository;
 import es.aag.configurador.campoaras.repositories.IAdminVerificationRepository;
+import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
 import es.aag.configurador.campoaras.repositories.IColorRepository;
 import es.aag.configurador.campoaras.repositories.IConfiguracionRepository;
 import es.aag.configurador.campoaras.repositories.IFrenteRepository;
+import es.aag.configurador.campoaras.repositories.IPedidoBackupRepository;
+import es.aag.configurador.campoaras.repositories.IPedidoRepository;
+import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
 import es.aag.configurador.campoaras.repositories.IProductoRepository;
 import es.aag.configurador.campoaras.repositories.IRolRepository;
 import es.aag.configurador.campoaras.repositories.ISerieRepository;
@@ -90,6 +98,18 @@ public class AdminService
 	
 	@Autowired
 	private IFrenteRepository frenteRepo;
+	
+	@Autowired
+	private IBulkProductosUsuarioRepository bulkRepo;
+	
+	@Autowired
+	private IProductoConfiguradoRepository seleccionRepo;
+	
+	@Autowired
+	private IPedidoRepository pedidoRepo;
+	
+	@Autowired
+	private IPedidoBackupRepository pedidoBakRepo;
 	
 	private final Validations validation;
 	
@@ -347,10 +367,41 @@ public class AdminService
 			throw new CPException(403,"No tienes permiso");
 		}
 		
-		log.info("[ADMIN] {} Ha eliminado al usuario {} de la app con permiso de {} -- {}",usrToken,usuario.getUSRToken(),rol,seguridad);
+		List<PedidoBackup> pedidosBak = this.pedidoBakRepo.findByUsuarioPedidoBack(usuario);
+		List<Pedido> pedidos = this.pedidoRepo.findByUsuarioPedido(usuario);
+		List<BulkProductosUsuario> bulks = this.bulkRepo.findByUsuarioUuid(usuario);
+		List<ProductoConfigurado> selecciones = this.seleccionRepo.findByUsuario(usuario);
+		
+		if(pedidosBak.size()>0)
+		{
+			this.pedidoBakRepo.deleteAll(pedidosBak);
+			this.pedidoBakRepo.flush();
+		}
+			
+		if(pedidos.size()>0)
+		{
+			this.pedidoRepo.deleteAll(pedidos);
+			this.pedidoRepo.flush();
+		}
+		
+		if(bulks.size()>0)
+		{
+			this.bulkRepo.deleteAll(bulks);
+			this.bulkRepo.flush();
+		}
+		
+		if(selecciones.size()>0)
+		{
+			this.seleccionRepo.deleteAll(selecciones);
+			this.seleccionRepo.flush();
+		}
+		
+		log.info("[ADMIN] -- /del-user -- {} Ha eliminado al usuario {} de la app con permiso de {} -- {}",usrToken,usuario.getUSRToken(),rol,seguridad);
+		log.info("[ADMIN] -- /del-user -- Se han eliminado {} copias de pedido,{} pedidos, {} cestas y {} selecciones de la app con permiso de {} -- {}",pedidosBak.size(),pedidos.size(),bulks.size(),selecciones.size(),rol,seguridad);
 		
 		this.userRepo.delete(usuario);
-	}
+		this.userRepo.flush();
+		}
 	/**
 	 * Metodo que actualiza un usuario, solo un ADMINISTRADOR o SUPERADMINISTRADOR tiene el permiso para actualizarlo
 	 * @param uuid

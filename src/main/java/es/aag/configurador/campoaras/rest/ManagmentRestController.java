@@ -993,6 +993,48 @@ public class ManagmentRestController
 		}
 	}
 	
+	@RequestMapping(method = RequestMethod.GET,value="/orders-bak",produces="application/json")
+	public ResponseEntity<?> getBakOrders(@RequestParam(value="uuid",required=true)final String uuid,
+										HttpServletRequest request, Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/orders", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.COMERCIAL_ROLE, seguridad, "/orders", usuario.getUSRToken());
+			
+			Optional<Usuario> userOpt = this.userRepo.findById(uuid);
+		
+			if(!userOpt.isPresent())
+			{
+				log.warn("[AVISO] -- /orders -- {} Ha intentado obtener los pedidos de otro usuario usando un uuid erroneo con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+				throw new CPException(404,"Datos inexistentes");
+			}
+			
+			Usuario usuarioPedido = userOpt.get();
+			
+			List<OrderDTO> response = this.orderService.getPedidosBak(usuarioPedido, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.ok().body(response);
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /orders-bak -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
+	
 	@RequestMapping(method = RequestMethod.DELETE,value="/orders/{orderId}")
 	public ResponseEntity<?> deletePedido(@PathVariable(value="orderId",required=true)final String uuid,
 			HttpServletRequest request,Authentication authentication)
