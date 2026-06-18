@@ -120,9 +120,9 @@ public class OrderRestController
 			String ip = this.security.getClientIPAddress(request);
 			String seguridad = this.security.getIpInfo(ip, request);
 			
-			Usuario usuario = this.security.isAuth(userRepo, "/order-proposal-bak", seguridad);
+			Usuario usuario = this.security.isAuth(userRepo, "/orders-bak", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/order-proposal-bak", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/orders-bak", usuario.getUSRToken());
 			
 			this.service.deletePedidoBak(uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
