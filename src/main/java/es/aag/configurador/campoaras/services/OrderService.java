@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import es.aag.configurador.campoaras.dto.OrderDTO;
 import es.aag.configurador.campoaras.dto.ResponseSeleccion;
@@ -37,7 +38,6 @@ import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
 import es.aag.configurador.campoaras.utils.EstadoPedido;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class OrderService 
@@ -602,8 +602,56 @@ public class OrderService
 		
 		userPedido.removePedidos(pedido);
 		
+		List<ProductoConfigurado> affected = new LinkedList<ProductoConfigurado>();
+		
+		for(String id:pedido.getProductos())
+		{
+			Optional<ProductoConfigurado> itemOpt = this.seleccionRepo.findById(id);
+			
+			if(itemOpt.isPresent())
+			{
+				ProductoConfigurado item = itemOpt.get();
+				affected.add(item);
+				userPedido.removeProducto(item);
+			}
+		}
+		
+		List<BulkProductosUsuario> bulksAffected = new LinkedList<BulkProductosUsuario>();
+		
+		for(BulkProductosUsuario item:this.bulkRepo.findAll()) 
+		{
+			List<String> productos = item.getProductos();
+		    List<String> productosPedido = pedido.getProductos();
+		    
+		    productos.sort((a, b) -> b.compareTo(a));
+		    productosPedido.sort((a, b) -> b.compareTo(a));
+		   
+		    
+		    if(productos.size() == productosPedido.size() && productos.equals(productosPedido)) 
+		    {
+			    String userUuid = userPedido.getUuid();
+		    	if(userUuid.equals(item.getUsuarioUuid().getUuid()) && this.encryptor.decrypt(item.getReferencia()).equals(this.encryptor.decrypt(pedido.getReferencia())))
+		    	{
+			    	bulksAffected.add(item); 
+			    	userPedido.removeBulk(item);
+		    	}
+		    }
+			
+			
+		}
+		
+		log.info("[ADMIN] -- /orders -- {} Se han borrado {} selecciones asociadas al pedido {} borrado con permiso de  {} -- {}",usrToken,affected.size(),pedido.getUuid(),rol,seguridad);
+		
+		this.seleccionRepo.deleteAll(affected);
+		this.seleccionRepo.flush();
+		
+		this.bulkRepo.deleteAll(bulksAffected);
+		this.bulkRepo.flush();
+		
 		this.userRepo.save(userPedido);
 		this.userRepo.flush();
+		
+		
 	}
 	
 	public void deletePedidoBak(String uuid,String rol,String seguridad,String usrToken) throws CPException
