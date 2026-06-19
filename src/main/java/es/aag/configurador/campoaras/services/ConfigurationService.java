@@ -1049,6 +1049,8 @@ private Logger log = LogManager.getLogger();
 					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
 					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
 					
+					String tipo = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getTipo());
+					
 					List<String> extrasDecrypt = new LinkedList<String>();
 					
 					for(String extra:item.getExtras())
@@ -1063,7 +1065,7 @@ private Logger log = LogManager.getLogger();
 						observaciones = this.encryptor.decrypt(item.getObservaciones());
 					}
 					
-					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,extrasDecrypt,precioFinal,cantidad,observaciones,isEspecial,null,null);
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,extrasDecrypt,precioFinal,cantidad,observaciones,isEspecial,tipo,null,null);
 					selecciones[index] = seleccion;
 				}
 				else

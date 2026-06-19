@@ -61,6 +61,8 @@ public class SeleccionDTO
 	
 	private Boolean isEspecial;
 	
+	private String tipo;
+	
 	private Boolean bulk;
 
 	private String referenciaBulk;
