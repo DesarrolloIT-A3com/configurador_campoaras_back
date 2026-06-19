@@ -554,6 +554,7 @@ public class AdminService
 			item.put("entidad", "acabado");
 			item.put("uuid", acabado.getUuid());
 			item.put("nombre", this.encryptor.decrypt(acabado.getNombre()));
+			item.put("orden", acabado.getOrden());
 			
 			String[] tipos = acabado.getTipos();
 			
@@ -573,6 +574,7 @@ public class AdminService
 			item.put("entidad", "color");
 			item.put("uuid", color.getUuid());
 			item.put("nombre", this.encryptor.decrypt(color.getNombre()));
+			item.put("orden", color.getOrden());
 			
 			List<String> acabados = new LinkedList<String>();
 			for(Acabado acabado:color.getAcabados())
@@ -621,6 +623,7 @@ public class AdminService
 			item.put("referencia", this.encryptor.decrypt(frente.getReferencia()));
 			item.put("regleta", frente.isRegleta());
 			item.put("tirador", frente.isTirador());
+			item.put("orden", frente.getOrden());
 			
 			List<String> acabados = new LinkedList<String>();
 			List<String> acabadosExtension = new LinkedList<String>();
@@ -793,6 +796,8 @@ public class AdminService
 	    		String nombre = (String) item.get("nombre");
 	    		String tipos[] = objectMapper.convertValue(item.get("tipos"), String[].class);	    		
 	    		nombre = this.encryptor.encrypt(nombre);
+	    		Integer orden = (Integer) item.get("orden");
+
 	    		
 	    		for(int i = 0;i<tipos.length;i++)
 	    		{
@@ -803,6 +808,7 @@ public class AdminService
 	    		acabado.setUuid(uuidItem);
 	    		acabado.setNombre(nombre);
 	    		acabado.setTipos(tipos);
+	    		acabado.setOrden(orden!=null ? orden : 0);
 	    		acabados.add(acabado);
 	    	}
 	    	
@@ -821,12 +827,15 @@ public class AdminService
 	    	{
 	    		String uuidItem = (String) item.get("uuid");
 	    		String nombre = (String) item.get("nombre");
+	    		Integer orden = (Integer) item.get("orden");
+
 	    		
 	    		String[] acabadosItem = objectMapper.convertValue(item.get("acabados"), String[].class);
 	    		
 	    		Color color = new Color();
 	    		color.setUuid(uuidItem);
 	    		color.setNombre(this.encryptor.encrypt(nombre));
+	    		color.setOrden(orden!=null ? orden : 0);
 	    		colores.add(color);
 	    		
 	    		for(String uuidAcabado:acabadosItem)
@@ -975,6 +984,7 @@ public class AdminService
 	            String referencia = (String) item.get("referencia");
 	            Boolean regleta = (Boolean) item.get("regleta");
 	            Boolean tirador = (Boolean) item.get("tirador");
+	            Integer orden = (Integer) item.get("orden");
 	            
 	            // Listas de UUIDs que vienen en el JSON
 	            String[] acabadosUuids = objectMapper.convertValue(item.get("acabados"), String[].class);;
@@ -992,6 +1002,7 @@ public class AdminService
 	            frente.setReferencia(referencia);
 	            frente.setRegleta(regleta != null ? regleta : false);
 	            frente.setTirador(tirador != null ? tirador : false);
+	            frente.setOrden(orden!=null ? orden : 0);
 	            
 	            // Relacionar acabados
 	            if(acabadosUuids != null)
