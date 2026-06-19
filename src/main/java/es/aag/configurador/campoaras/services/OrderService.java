@@ -25,15 +25,19 @@ import es.aag.configurador.campoaras.dto.OrderDTO;
 import es.aag.configurador.campoaras.dto.ResponseSeleccion;
 import es.aag.configurador.campoaras.dto.SeleccionDTO;
 import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
+import es.aag.configurador.campoaras.entities.Configuracion;
 import es.aag.configurador.campoaras.entities.Frente;
 import es.aag.configurador.campoaras.entities.Pedido;
 import es.aag.configurador.campoaras.entities.PedidoBackup;
 import es.aag.configurador.campoaras.entities.ProductoConfigurado;
+import es.aag.configurador.campoaras.entities.Serie;
 import es.aag.configurador.campoaras.entities.Usuario;
 import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
+import es.aag.configurador.campoaras.repositories.IConfiguracionRepository;
 import es.aag.configurador.campoaras.repositories.IPedidoBackupRepository;
 import es.aag.configurador.campoaras.repositories.IPedidoRepository;
 import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
+import es.aag.configurador.campoaras.repositories.ISerieRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
@@ -64,6 +68,12 @@ public class OrderService
 	
 	@Autowired
 	private IPedidoBackupRepository pedidoBakRepo;
+	
+	@Autowired
+	private ISerieRepository serieRepo;
+	
+	@Autowired
+	private IConfiguracionRepository configRepo;
 	
 	
 	public List<ResponseSeleccion> getSelecciones(Boolean isEnd,String userUuid,String rol,String seguridad,String usrToken)
@@ -194,6 +204,8 @@ public class OrderService
 					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
 					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
 					
+					String tipo = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getTipo());
+					
 					List<String> extrasDecrypt = new LinkedList<String>();
 					
 					for(String extra:item.getExtras())
@@ -208,7 +220,7 @@ public class OrderService
 						observaciones = this.encryptor.decrypt(item.getObservaciones());
 					}
 					
-					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta, extrasDecrypt,precioFinal, cantidad, observaciones,isEspecial,null,null);
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta, extrasDecrypt,precioFinal, cantidad, observaciones,isEspecial,tipo,null,null);
 					selecciones[index] = seleccion;
 				}
 				else
@@ -251,25 +263,117 @@ public class OrderService
 		
 		List<BulkProductosUsuario> bulkList = this.bulkRepo.findAll();
 		
-		for(BulkProductosUsuario bulk:bulkList)
+		boolean isDelete = false;
+		BulkProductosUsuario bulk = null;
+		
+		for(BulkProductosUsuario item:bulkList)
 		{
-			int index = bulk.getProductos().indexOf(seleccion.getUuid());
+			int index = item.getProductos().indexOf(seleccion.getUuid());
 			
 			if(index !=-1)
 			{
-				List<String> productos = bulk.getProductos();
+				List<String> productos = item.getProductos();
 				productos.remove(index);
-				bulk.setProductos(productos);
-				if(bulk.getProductos().isEmpty())
+				item.setProductos(productos);
+				if(item.getProductos().isEmpty())
 				{
-					this.bulkRepo.delete(bulk);
+					this.bulkRepo.delete(item);
+					isDelete = true;
 				}
 				else
 				{
-					this.bulkRepo.save(bulk);
+					this.bulkRepo.save(item);
+					bulk = item;
 				}
 				this.bulkRepo.flush();
 				break;
+			}
+		}
+		
+		// Se buscan los lavabos para cambiarlos de tipología en caso de que que dentro de una cesta no haya ningún tipo de mueble
+		if(!isDelete)
+		{
+			List<ProductoConfigurado> lavabos = new LinkedList<ProductoConfigurado>();
+			boolean hayMueble = false;
+			
+			for(String producto:bulk.getProductos())
+			{
+				Optional<ProductoConfigurado> optItem = this.seleccionRepo.findById(producto);
+				
+				if(optItem.isPresent())
+				{
+					ProductoConfigurado item = optItem.get();
+					
+					if(this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getTipo()).equalsIgnoreCase("lavabos"))
+					{
+						lavabos.add(item);
+					}
+					
+					if(this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getTipo()).equalsIgnoreCase("mueble"))
+					{
+						hayMueble = true;
+					}
+				}
+			}
+			
+			if(!hayMueble && lavabos.size()>0)
+			{
+				for(ProductoConfigurado item:lavabos)
+				{
+					Serie serieSelect = null;
+					List<Serie> variantesLavabo = this.serieRepo.findByProducto(item.getConfiguracion().getSerie().getProducto());
+
+					
+					for(Serie serie:variantesLavabo)
+					{
+						String variante = this.encryptor.decrypt(serie.getVariante()).strip();
+						String configVariante = this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante()).strip();
+						String [] spliter =  variante.split(configVariante);
+						
+						if(spliter.length == 2 && spliter[1].strip().equalsIgnoreCase("solo"))
+						{
+							serieSelect = serie;
+							break;
+						}
+					}
+					
+					if(serieSelect!=null)
+					{
+						List<Configuracion> configs = this.configRepo.findBySerie(serieSelect);
+						String referencia = item.getConfiguracion().getReferencia().replace("-C", "");
+						
+						boolean isChanged = false;
+						
+						for(Configuracion config:configs)
+						{
+							if(config.getReferencia().equalsIgnoreCase(referencia))
+							{
+								item.setConfiguracion(config);
+								
+								String acabado = this.encryptor.decrypt(item.getAcabado().getNombre());		
+								
+								for(Map<String,Object> armazones:config.getArmazon())
+								{
+									String armazon = this.encryptor.decrypt(((String) armazones.get("nombre")));
+									
+									if(acabado.equalsIgnoreCase(armazon))
+									{
+										Number precio = (Number) armazones.get("precio");
+										item.setPrecioFinal(precio.floatValue() * item.getCantidad());
+										isChanged = true;
+										break;
+									}
+								}
+							}
+						}
+						
+						log.info("[ACCION] -- /producto-configurado -- {} Se ha alterado los lavabos de la cesta {} debido a que no hay muebles con permiso de {} -- {}",usrToken,bulk.getUuid(),rol,seguridad);
+						
+						this.seleccionRepo.save(item);
+						this.seleccionRepo.flush();
+					}
+					
+				}
 			}
 		}
 		
@@ -288,7 +392,7 @@ public class OrderService
 		this.pedidoRepo.deleteAll(pedidos);
 		this.pedidoRepo.flush();
 		
-		log.info("[ADMIN] -- /producto-configurado -- {} Ha eliminado la seleccion {} de la base de datos con permiso de {} -- {}",usrToken,seleccion.getUuid(),rol,seguridad);
+		log.info("[ACCION] -- /producto-configurado -- {} Ha eliminado la seleccion {} de la base de datos con permiso de {} -- {}",usrToken,seleccion.getUuid(),rol,seguridad);
 		this.seleccionRepo.delete(seleccion);
 		this.seleccionRepo.flush();
 		
@@ -466,6 +570,8 @@ public class OrderService
 					
 					String serie = this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getProducto().getNombre()) +" "+this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getVariante());
 					
+					String tipo = this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getProducto().getTipo());
+					
 					String observaciones = "";
 					
 					if(seleccion.getObservaciones()!=null)
@@ -474,7 +580,7 @@ public class OrderService
 					}
 					
 					SeleccionDTO dto = new SeleccionDTO(uuidSel,referenciaSel,this.encryptor.decrypt(usuario.getUsername()),serie,fondo,ancho,alto,null,armazon,colorArmazon,null,frente,acabadoFrente,
-							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,extrasDecrypt,precioFinal,cantidad,observaciones,isEspecial,null,null);
+							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,extrasDecrypt,precioFinal,cantidad,observaciones,isEspecial,tipo,null,null);
 					
 					selecciones.add(dto);
 				}
@@ -561,7 +667,9 @@ public class OrderService
 			    
 			    boolean isEspecial = (boolean) seleccion.get("isEspecial");
 			    
-			    SeleccionDTO seleccionDto = new SeleccionDTO(null, referenciaOrder, username, serie, fondo, ancho, alto, null, armazon, colorArmazon, null, frente, acabadoFrente, colorFrente, null, acabadoTirador, colorTirador, null, acabadoRegleta, colorRegleta, extrasDecrypt, precioFinal, cantidad, observaciones, isEspecial, null, null);
+			    String tipo = (String) seleccion.get("tipo");
+			    
+			    SeleccionDTO seleccionDto = new SeleccionDTO(null, referenciaOrder, username, serie, fondo, ancho, alto, null, armazon, colorArmazon, null, frente, acabadoFrente, colorFrente, null, acabadoTirador, colorTirador, null, acabadoRegleta, colorRegleta, extrasDecrypt, precioFinal, cantidad, observaciones, isEspecial, tipo,null, null);
 			    
 			    selecciones.add(seleccionDto);
 			}
@@ -885,6 +993,9 @@ public class OrderService
 			serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
 			serie = this.encryptor.encrypt(serie);
 			
+			String tipo = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getTipo());
+			tipo = this.encryptor.encrypt(tipo);
+			
 			selContent.put("referencia",referencia);
 			selContent.put("fondo", fondo);
 			selContent.put("ancho", ancho);
@@ -904,6 +1015,7 @@ public class OrderService
 			selContent.put("precioFinal", item.getPrecioFinal());
 			selContent.put("cantidad", item.getCantidad());
 			selContent.put("isEspecial", isEspecial);
+			selContent.put("tipo", tipo);
 			
 			content.add(selContent);
 		}
