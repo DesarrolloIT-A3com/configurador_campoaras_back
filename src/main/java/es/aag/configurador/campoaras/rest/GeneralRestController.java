@@ -182,6 +182,7 @@ public class GeneralRestController
 	
 	@RequestMapping(method = RequestMethod.PATCH,value = "/configure/{uuid}")
 	public ResponseEntity<?> endConfigure(@PathVariable(value = "uuid",required = true) final String uuid,
+										  @RequestBody(required = false) final Map<String,String> body,
 			HttpServletRequest request,Authentication authentication)
 	{
 		try
@@ -203,10 +204,22 @@ public class GeneralRestController
 			
 			BulkProductosUsuario bulk = bulkOpt.get();
 			
-			bulk.setEnd(true);
-			bulk.setFecha(LocalDateTime.now());
+			if(body!=null && !body.getOrDefault("referencia", CPConstants.MAP_DEFAULT_VALUE).equals(CPConstants.MAP_DEFAULT_VALUE))
+			{
+				String referencia = body.get("referencia");
+				bulk.setReferencia(this.encryptor.encrypt(referencia));
+				
+				log.info("[ACCION] -- /configure -- {} Ha actualizado la referencia de la configuracion {} con permiso de {} -- {}",usuario.getUSRToken(),bulk.getUuid(),usuario.getRol().getNombre(),usuario.getUSRToken());
+			}
+			else
+			{
+				bulk.setEnd(true);
+				bulk.setFecha(LocalDateTime.now());
+				
+				log.info("[ACCION] -- /configure -- {} Ha finalizado la configuracion {} con permiso de {} -- {}",usuario.getUSRToken(),bulk.getUuid(),usuario.getRol().getNombre(),usuario.getUSRToken());
+			}
 			
-			log.info("[ACCION] -- /configure -- {} Ha finalizado la configuracion {} con permiso de {} -- {}",usuario.getUSRToken(),bulk.getUuid(),usuario.getRol().getNombre(),usuario.getUSRToken());
+			
 			
 			this.bulkRepo.save(bulk);
 			this.bulkRepo.flush();
