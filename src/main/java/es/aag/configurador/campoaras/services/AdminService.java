@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,17 +28,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.aag.configurador.campoaras.dto.UserGetDTO;
 import es.aag.configurador.campoaras.entities.Acabado;
 import es.aag.configurador.campoaras.entities.AdminVerification;
+import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
 import es.aag.configurador.campoaras.entities.Color;
 import es.aag.configurador.campoaras.entities.Configuracion;
 import es.aag.configurador.campoaras.entities.Frente;
+import es.aag.configurador.campoaras.entities.Pedido;
+import es.aag.configurador.campoaras.entities.PedidoBackup;
 import es.aag.configurador.campoaras.entities.Producto;
+import es.aag.configurador.campoaras.entities.ProductoConfigurado;
+import es.aag.configurador.campoaras.entities.Rol;
 import es.aag.configurador.campoaras.entities.Serie;
 import es.aag.configurador.campoaras.entities.Usuario;
 import es.aag.configurador.campoaras.repositories.IAcabadoRepository;
 import es.aag.configurador.campoaras.repositories.IAdminVerificationRepository;
+import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
 import es.aag.configurador.campoaras.repositories.IColorRepository;
 import es.aag.configurador.campoaras.repositories.IConfiguracionRepository;
 import es.aag.configurador.campoaras.repositories.IFrenteRepository;
+import es.aag.configurador.campoaras.repositories.IPedidoBackupRepository;
+import es.aag.configurador.campoaras.repositories.IPedidoRepository;
+import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
 import es.aag.configurador.campoaras.repositories.IProductoRepository;
 import es.aag.configurador.campoaras.repositories.IRolRepository;
 import es.aag.configurador.campoaras.repositories.ISerieRepository;
@@ -89,6 +99,18 @@ public class AdminService
 	@Autowired
 	private IFrenteRepository frenteRepo;
 	
+	@Autowired
+	private IBulkProductosUsuarioRepository bulkRepo;
+	
+	@Autowired
+	private IProductoConfiguradoRepository seleccionRepo;
+	
+	@Autowired
+	private IPedidoRepository pedidoRepo;
+	
+	@Autowired
+	private IPedidoBackupRepository pedidoBakRepo;
+	
 	private final Validations validation;
 	
 	@Autowired
@@ -97,6 +119,120 @@ public class AdminService
 	public AdminService()
 	{
 		this.validation = new Validations();
+	}
+	
+	public void createUser(UserGetDTO body,String rol,String seguridad,String usrToken) throws CPException
+	{
+		List<Usuario> usuarios = this.userRepo.findAll();
+		
+		final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+		final Pattern pattern = Pattern.compile(EMAIL_REGEX);
+		
+		boolean repeated = false;
+		
+		for(Usuario usuario:usuarios)
+		{
+			if(this.encryptor.decrypt(usuario.getEmail()).equals(body.getEmail()))
+			{
+				repeated = true;
+				break;
+			}
+		}
+		
+		if(repeated)
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario usando un email repetido con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(409,"Datos existentes");
+		}
+		
+		if(body.getEmail() == null && !pattern.matcher(body.getEmail()).matches())
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario usando un email inválido con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		if(body.getUsername()==null)
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario usando un username null con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		else if(body.getUsername().isBlank())
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario usando un username vacío con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		if(body.getRol()==null)
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario usando un rol vacío con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		if(body.getPassword().equals(CPConstants.MAP_DEFAULT_VALUE))
+		{
+			log.warn("[AVISO] -- /create-user -- {} Ha tratado de crear un usuario introduciendo una contraseña vacía con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
+		String uuid = UUID.randomUUID().toString();
+		String email = this.encryptor.encrypt(body.getEmail());
+		String username = this.encryptor.encrypt(body.getUsername());
+		String password = this.encoder.encode(body.getPassword());
+		float descuento = body.getDescuento();
+		float segundoDescuento = body.getSegundoDescuento();
+		
+		Rol userRol = this.rolRepo.findByNombre(body.getRol());
+		boolean verificado = !body.getRol().equals(CPConstants.VER_ROLE);
+		
+		if(userRol==null)
+		{
+			userRol = this.rolRepo.findByNombre(CPConstants.VER_ROLE);
+			verificado = false;
+		}
+		
+		String comercial = body.getComercial();
+		boolean found = false;
+		
+		if(comercial!=null)
+		{
+			for(Usuario item:usuarios)
+			{
+				if(comercial.equals(this.encryptor.decrypt(item.getComercial())))
+				{
+					found = true;
+					break;
+				}
+			}
+			
+			if(!found)
+			{
+				comercial = null;
+			}
+			else
+			{
+				comercial = this.encryptor.encrypt(comercial);
+			}
+		}
+		
+		String token = "USR-" + UUID.randomUUID().toString().substring(0,8); 
+		
+		Usuario usuario = new Usuario();
+		
+		usuario.setUuid(uuid);
+		usuario.setEmail(email);
+		usuario.setUsername(username);
+		usuario.setPassword(password);
+		usuario.setDescuento(descuento);
+		usuario.setComercial(comercial);
+		usuario.setSegundoDescuento(segundoDescuento);
+		usuario.setVerificado(verificado);
+		usuario.setRol(userRol);
+		usuario.setUSRToken(token);
+		
+		log.info("[ADMIN] -- create-user -- {} Ha creado el usuario {} con permiso de {} -- {}",usrToken,token,rol,seguridad);
+		
+		this.userRepo.save(usuario);
+		this.userRepo.flush();		
 	}
 	
 	/**
@@ -119,7 +255,7 @@ public class AdminService
 		
 		for(Usuario user:usuarios)
 		{
-			UserGetDTO dto = new UserGetDTO(user.getUuid(),this.encryptor.decrypt(user.getEmail()),this.encryptor.decrypt(user.getUsername()),user.getDescuento(),user.getSegundoDescuento(),this.encryptor.decrypt(user.getComercial()),user.getAcceso(),user.getRol().getNombre(),!user.getRol().getNombre().equals(CPConstants.VER_ROLE));
+			UserGetDTO dto = new UserGetDTO(user.getUuid(),this.encryptor.decrypt(user.getEmail()),this.encryptor.decrypt(user.getUsername()),null,user.getDescuento(),user.getSegundoDescuento(),this.encryptor.decrypt(user.getComercial()),user.getAcceso(),user.getRol().getNombre(),!user.getRol().getNombre().equals(CPConstants.VER_ROLE));
 			
 			String comercialEmail = this.encryptor.decrypt(usuario.getEmail());
 			String userEmail = "";
@@ -231,10 +367,41 @@ public class AdminService
 			throw new CPException(403,"No tienes permiso");
 		}
 		
-		log.info("[ADMIN] {} Ha eliminado al usuario {} de la app con permiso de {} -- {}",usrToken,usuario.getUSRToken(),rol,seguridad);
+		List<PedidoBackup> pedidosBak = this.pedidoBakRepo.findByUsuarioPedidoBack(usuario);
+		List<Pedido> pedidos = this.pedidoRepo.findByUsuarioPedido(usuario);
+		List<BulkProductosUsuario> bulks = this.bulkRepo.findByUsuarioUuid(usuario);
+		List<ProductoConfigurado> selecciones = this.seleccionRepo.findByUsuario(usuario);
+		
+		if(pedidosBak.size()>0)
+		{
+			this.pedidoBakRepo.deleteAll(pedidosBak);
+			this.pedidoBakRepo.flush();
+		}
+			
+		if(pedidos.size()>0)
+		{
+			this.pedidoRepo.deleteAll(pedidos);
+			this.pedidoRepo.flush();
+		}
+		
+		if(bulks.size()>0)
+		{
+			this.bulkRepo.deleteAll(bulks);
+			this.bulkRepo.flush();
+		}
+		
+		if(selecciones.size()>0)
+		{
+			this.seleccionRepo.deleteAll(selecciones);
+			this.seleccionRepo.flush();
+		}
+		
+		log.info("[ADMIN] -- /del-user -- {} Ha eliminado al usuario {} de la app con permiso de {} -- {}",usrToken,usuario.getUSRToken(),rol,seguridad);
+		log.info("[ADMIN] -- /del-user -- Se han eliminado {} copias de pedido,{} pedidos, {} cestas y {} selecciones de la app con permiso de {} -- {}",pedidosBak.size(),pedidos.size(),bulks.size(),selecciones.size(),rol,seguridad);
 		
 		this.userRepo.delete(usuario);
-	}
+		this.userRepo.flush();
+		}
 	/**
 	 * Metodo que actualiza un usuario, solo un ADMINISTRADOR o SUPERADMINISTRADOR tiene el permiso para actualizarlo
 	 * @param uuid
@@ -387,6 +554,7 @@ public class AdminService
 			item.put("entidad", "acabado");
 			item.put("uuid", acabado.getUuid());
 			item.put("nombre", this.encryptor.decrypt(acabado.getNombre()));
+			item.put("orden", acabado.getOrden());
 			
 			String[] tipos = acabado.getTipos();
 			
@@ -406,6 +574,7 @@ public class AdminService
 			item.put("entidad", "color");
 			item.put("uuid", color.getUuid());
 			item.put("nombre", this.encryptor.decrypt(color.getNombre()));
+			item.put("orden", color.getOrden());
 			
 			List<String> acabados = new LinkedList<String>();
 			for(Acabado acabado:color.getAcabados())
@@ -454,6 +623,7 @@ public class AdminService
 			item.put("referencia", this.encryptor.decrypt(frente.getReferencia()));
 			item.put("regleta", frente.isRegleta());
 			item.put("tirador", frente.isTirador());
+			item.put("orden", frente.getOrden());
 			
 			List<String> acabados = new LinkedList<String>();
 			List<String> acabadosExtension = new LinkedList<String>();
@@ -626,6 +796,8 @@ public class AdminService
 	    		String nombre = (String) item.get("nombre");
 	    		String tipos[] = objectMapper.convertValue(item.get("tipos"), String[].class);	    		
 	    		nombre = this.encryptor.encrypt(nombre);
+	    		Integer orden = (Integer) item.get("orden");
+
 	    		
 	    		for(int i = 0;i<tipos.length;i++)
 	    		{
@@ -636,6 +808,7 @@ public class AdminService
 	    		acabado.setUuid(uuidItem);
 	    		acabado.setNombre(nombre);
 	    		acabado.setTipos(tipos);
+	    		acabado.setOrden(orden!=null ? orden : 0);
 	    		acabados.add(acabado);
 	    	}
 	    	
@@ -654,12 +827,15 @@ public class AdminService
 	    	{
 	    		String uuidItem = (String) item.get("uuid");
 	    		String nombre = (String) item.get("nombre");
+	    		Integer orden = (Integer) item.get("orden");
+
 	    		
 	    		String[] acabadosItem = objectMapper.convertValue(item.get("acabados"), String[].class);
 	    		
 	    		Color color = new Color();
 	    		color.setUuid(uuidItem);
 	    		color.setNombre(this.encryptor.encrypt(nombre));
+	    		color.setOrden(orden!=null ? orden : 0);
 	    		colores.add(color);
 	    		
 	    		for(String uuidAcabado:acabadosItem)
@@ -808,6 +984,7 @@ public class AdminService
 	            String referencia = (String) item.get("referencia");
 	            Boolean regleta = (Boolean) item.get("regleta");
 	            Boolean tirador = (Boolean) item.get("tirador");
+	            Integer orden = (Integer) item.get("orden");
 	            
 	            // Listas de UUIDs que vienen en el JSON
 	            String[] acabadosUuids = objectMapper.convertValue(item.get("acabados"), String[].class);;
@@ -825,6 +1002,7 @@ public class AdminService
 	            frente.setReferencia(referencia);
 	            frente.setRegleta(regleta != null ? regleta : false);
 	            frente.setTirador(tirador != null ? tirador : false);
+	            frente.setOrden(orden!=null ? orden : 0);
 	            
 	            // Relacionar acabados
 	            if(acabadosUuids != null)
@@ -880,7 +1058,7 @@ public class AdminService
 	    this.productoRepo.flush();
 	    
 	    
-	 // IMPORTACION DE CONFIGURACIONES - Versión mejorada
+	 // IMPORTACION DE CONFIGURACIONES
 
 	    List<Configuracion> configuraciones = new LinkedList<Configuracion>();
 
@@ -908,12 +1086,12 @@ public class AdminService
 	            configuracion.setReferencia((String) item.get("referencia"));
 	            
 	            // Campos numéricos (pueden ser Integer, Long, etc.)
-	            configuracion.setFondo(item.get("fondo") != null ? ((Number) item.get("fondo")).intValue() : null);
-	            configuracion.setAncho(item.get("ancho") != null ? ((Number) item.get("ancho")).intValue() : null);
-	            configuracion.setAlto(item.get("alto") != null ? ((Number) item.get("alto")).intValue() : null);
-	            configuracion.setAltoMax(item.get("altoMax") != null ? ((Number) item.get("altoMax")).intValue() : null);
-	            configuracion.setFondoMin(item.get("fondoMin") != null ? ((Number) item.get("fondoMin")).intValue() : null);
-	            configuracion.setFondoMax(item.get("fondoMax") != null ? ((Number) item.get("fondoMax")).intValue() : null);
+	            configuracion.setFondo(item.get("fondo") != null ? ((Number) item.get("fondo")).floatValue() : null);
+	            configuracion.setAncho(item.get("ancho") != null ? ((Number) item.get("ancho")).floatValue() : null);
+	            configuracion.setAlto(item.get("alto") != null ? ((Number) item.get("alto")).floatValue() : null);
+	            configuracion.setAltoMax(item.get("altoMax") != null ? ((Number) item.get("altoMax")).floatValue() : null);
+	            configuracion.setFondoMin(item.get("fondoMin") != null ? ((Number) item.get("fondoMin")).floatValue() : null);
+	            configuracion.setFondoMax(item.get("fondoMax") != null ? ((Number) item.get("fondoMax")).floatValue() : null);
 	            
 	            // Campos Float
 	            configuracion.setPrecioMedidaFondoEsp(item.get("precioMedidaFondoEsp") != null ? 

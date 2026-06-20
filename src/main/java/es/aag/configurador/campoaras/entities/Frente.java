@@ -38,6 +38,9 @@ public class Frente
     
     @Column(nullable = false)
     private boolean tirador;
+    
+    @Column
+    private int orden = 0;
 	
 	@ManyToMany(mappedBy = "frentes", fetch = FetchType.LAZY)
 	private Set<Acabado> acabados = new HashSet<>();

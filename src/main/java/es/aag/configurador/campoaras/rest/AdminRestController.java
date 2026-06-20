@@ -58,6 +58,38 @@ public class AdminRestController
 		this.security = new GeneralSecurity();
 	}
 	
+	@RequestMapping(method = RequestMethod.POST,value = "/create-user",consumes="application/json")
+	public ResponseEntity<?> postUser(@RequestBody(required = true) final UserGetDTO body,
+			HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/create-user", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/create-user", usuario.getUSRToken());
+			
+			this.adminService.createUser(body, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+	
+			return ResponseEntity.status(201).build();
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /get-users -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
+	
 	@RequestMapping(method = RequestMethod.GET,value = "/get-users",produces = "application/json")
 	public ResponseEntity<?> getUsers(HttpServletRequest request,Authentication authentication)
 	{

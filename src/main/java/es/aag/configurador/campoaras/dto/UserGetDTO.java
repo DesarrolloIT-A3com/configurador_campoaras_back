@@ -15,6 +15,8 @@ public class UserGetDTO
 	
 	private String username;
 	
+	private String password;
+	
 	private float descuento;
 	
 	private float segundoDescuento;

@@ -3,9 +3,11 @@ package es.aag.configurador.campoaras.services;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -16,16 +18,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import es.aag.configurador.campoaras.dto.OrderDTO;
 import es.aag.configurador.campoaras.dto.ResponseSeleccion;
 import es.aag.configurador.campoaras.dto.SeleccionDTO;
 import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
+import es.aag.configurador.campoaras.entities.Configuracion;
+import es.aag.configurador.campoaras.entities.Frente;
 import es.aag.configurador.campoaras.entities.Pedido;
+import es.aag.configurador.campoaras.entities.PedidoBackup;
 import es.aag.configurador.campoaras.entities.ProductoConfigurado;
+import es.aag.configurador.campoaras.entities.Serie;
 import es.aag.configurador.campoaras.entities.Usuario;
 import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
+import es.aag.configurador.campoaras.repositories.IConfiguracionRepository;
+import es.aag.configurador.campoaras.repositories.IPedidoBackupRepository;
 import es.aag.configurador.campoaras.repositories.IPedidoRepository;
 import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
+import es.aag.configurador.campoaras.repositories.ISerieRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
@@ -53,6 +65,15 @@ public class OrderService
 	
 	@Autowired
 	private IPedidoRepository pedidoRepo;
+	
+	@Autowired
+	private IPedidoBackupRepository pedidoBakRepo;
+	
+	@Autowired
+	private ISerieRepository serieRepo;
+	
+	@Autowired
+	private IConfiguracionRepository configRepo;
 	
 	
 	public List<ResponseSeleccion> getSelecciones(Boolean isEnd,String userUuid,String rol,String seguridad,String usrToken)
@@ -177,8 +198,13 @@ public class OrderService
 					float ancho = item.getAncho() != null ? item.getAncho() : item.getConfiguracion().getAncho();
 					float alto = item.getAlto() != null ? item.getAlto() : item.getConfiguracion().getAlto();
 					
+					// Si existen medidas especiales se marca que la configuración presenta la etiqueta ESP
+					boolean isEspecial = fondo!=item.getConfiguracion().getFondo() || ancho!=item.getConfiguracion().getAncho() || alto!=item.getConfiguracion().getAlto();
+					
 					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
 					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
+					
+					String tipo = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getTipo());
 					
 					List<String> extrasDecrypt = new LinkedList<String>();
 					
@@ -187,17 +213,15 @@ public class OrderService
 						extrasDecrypt.add(this.encryptor.decrypt(extra));
 					}
 					
-					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta, extrasDecrypt,precioFinal, cantidad,null,null);
-					selecciones[index] = seleccion;
+					String observaciones = "";
 					
-					if(fecha==null)
+					if(item.getObservaciones()!=null)
 					{
-						fecha = item.getFecha();
+						observaciones = this.encryptor.decrypt(item.getObservaciones());
 					}
-					else if(fecha.isAfter(item.getFecha()))
-					{
-						fecha = item.getFecha();
-					}
+					
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta, extrasDecrypt,precioFinal, cantidad, observaciones,isEspecial,tipo,null,null);
+					selecciones[index] = seleccion;
 				}
 				else
 				{
@@ -206,6 +230,14 @@ public class OrderService
 				
 				index++;
 				
+			}
+			if(bulk.getFecha()==null)
+			{
+				fecha=LocalDateTime.now();
+			}
+			else
+			{
+				fecha=bulk.getFecha();
 			}
 			ResponseSeleccion seleccion = new ResponseSeleccion(bulk.getUuid(),usuario,referenciaBulk,selecciones,fecha,bulk.isEnd());
 			
@@ -231,25 +263,117 @@ public class OrderService
 		
 		List<BulkProductosUsuario> bulkList = this.bulkRepo.findAll();
 		
-		for(BulkProductosUsuario bulk:bulkList)
+		boolean isDelete = false;
+		BulkProductosUsuario bulk = null;
+		
+		for(BulkProductosUsuario item:bulkList)
 		{
-			int index = bulk.getProductos().indexOf(seleccion.getUuid());
+			int index = item.getProductos().indexOf(seleccion.getUuid());
 			
 			if(index !=-1)
 			{
-				List<String> productos = bulk.getProductos();
+				List<String> productos = item.getProductos();
 				productos.remove(index);
-				bulk.setProductos(productos);
-				if(bulk.getProductos().isEmpty())
+				item.setProductos(productos);
+				if(item.getProductos().isEmpty())
 				{
-					this.bulkRepo.delete(bulk);
+					this.bulkRepo.delete(item);
+					isDelete = true;
 				}
 				else
 				{
-					this.bulkRepo.save(bulk);
+					this.bulkRepo.save(item);
+					bulk = item;
 				}
 				this.bulkRepo.flush();
 				break;
+			}
+		}
+		
+		// Se buscan los lavabos para cambiarlos de tipología en caso de que que dentro de una cesta no haya ningún tipo de mueble
+		if(!isDelete)
+		{
+			List<ProductoConfigurado> lavabos = new LinkedList<ProductoConfigurado>();
+			boolean hayMueble = false;
+			
+			for(String producto:bulk.getProductos())
+			{
+				Optional<ProductoConfigurado> optItem = this.seleccionRepo.findById(producto);
+				
+				if(optItem.isPresent())
+				{
+					ProductoConfigurado item = optItem.get();
+					
+					if(this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getTipo()).equalsIgnoreCase("lavabos"))
+					{
+						lavabos.add(item);
+					}
+					
+					if(this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getTipo()).equalsIgnoreCase("mueble"))
+					{
+						hayMueble = true;
+					}
+				}
+			}
+			
+			if(!hayMueble && lavabos.size()>0)
+			{
+				for(ProductoConfigurado item:lavabos)
+				{
+					Serie serieSelect = null;
+					List<Serie> variantesLavabo = this.serieRepo.findByProducto(item.getConfiguracion().getSerie().getProducto());
+
+					
+					for(Serie serie:variantesLavabo)
+					{
+						String variante = this.encryptor.decrypt(serie.getVariante()).strip();
+						String configVariante = this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante()).strip();
+						String [] spliter =  variante.split(configVariante);
+						
+						if(spliter.length == 2 && spliter[1].strip().equalsIgnoreCase("solo"))
+						{
+							serieSelect = serie;
+							break;
+						}
+					}
+					
+					if(serieSelect!=null)
+					{
+						List<Configuracion> configs = this.configRepo.findBySerie(serieSelect);
+						String referencia = item.getConfiguracion().getReferencia().replace("-C", "");
+						
+						boolean isChanged = false;
+						
+						for(Configuracion config:configs)
+						{
+							if(config.getReferencia().equalsIgnoreCase(referencia))
+							{
+								item.setConfiguracion(config);
+								
+								String acabado = this.encryptor.decrypt(item.getAcabado().getNombre());		
+								
+								for(Map<String,Object> armazones:config.getArmazon())
+								{
+									String armazon = this.encryptor.decrypt(((String) armazones.get("nombre")));
+									
+									if(acabado.equalsIgnoreCase(armazon))
+									{
+										Number precio = (Number) armazones.get("precio");
+										item.setPrecioFinal(precio.floatValue() * item.getCantidad());
+										isChanged = true;
+										break;
+									}
+								}
+							}
+						}
+						
+						log.info("[ACCION] -- /producto-configurado -- {} Se ha alterado los lavabos de la cesta {} debido a que no hay muebles con permiso de {} -- {}",usrToken,bulk.getUuid(),rol,seguridad);
+						
+						this.seleccionRepo.save(item);
+						this.seleccionRepo.flush();
+					}
+					
+				}
 			}
 		}
 		
@@ -268,7 +392,7 @@ public class OrderService
 		this.pedidoRepo.deleteAll(pedidos);
 		this.pedidoRepo.flush();
 		
-		log.info("[ADMIN] -- /producto-configurado -- {} Ha eliminado la seleccion {} de la base de datos con permiso de {} -- {}",usrToken,seleccion.getUuid(),rol,seguridad);
+		log.info("[ACCION] -- /producto-configurado -- {} Ha eliminado la seleccion {} de la base de datos con permiso de {} -- {}",usrToken,seleccion.getUuid(),rol,seguridad);
 		this.seleccionRepo.delete(seleccion);
 		this.seleccionRepo.flush();
 		
@@ -301,7 +425,8 @@ public class OrderService
 		
 		Pedido pedido = new Pedido();
 		List<String> productoList = new LinkedList<String>();
-		
+		List<ProductoConfigurado> selecciones = new LinkedList<ProductoConfigurado>();
+		  
 		for(String producto:body.getProductos())
 		{
 			Optional<ProductoConfigurado> optSeleccion = this.seleccionRepo.findById(producto);
@@ -313,6 +438,7 @@ public class OrderService
 			}
 			
 			productoList.add(producto);
+			selecciones.add(optSeleccion.get());
 		}
 		
 		String uuid = UUID.randomUUID().toString();
@@ -331,6 +457,8 @@ public class OrderService
 		usuario.addPedidos(pedido);
 		this.userRepo.save(usuario);
 		this.userRepo.flush();
+		
+		this.registerPedidoBak(usuario, pedido, selecciones,rol, seguridad, usrToken);
 	}
 	
 	public List<OrderDTO> getPedidos(Usuario usuario,String rol,String seguridad,String usrToken)
@@ -422,6 +550,9 @@ public class OrderService
 					float ancho = seleccion.getAncho()!=null ? seleccion.getAncho() : seleccion.getConfiguracion().getAncho();
 					float alto = seleccion.getAlto()!=null ? seleccion.getAlto() : seleccion.getConfiguracion().getAlto();
 					
+					// Si existen medidas especiales se marca que la configuración presenta la etiqueta ESP
+					boolean isEspecial = fondo!=seleccion.getConfiguracion().getFondo() || ancho!=seleccion.getConfiguracion().getAncho() || alto!=seleccion.getConfiguracion().getAlto();
+					
 					// Conversión a milimetros
 					fondo = fondo * 10;
 					ancho = ancho * 10;
@@ -439,8 +570,17 @@ public class OrderService
 					
 					String serie = this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getProducto().getNombre()) +" "+this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getVariante());
 					
+					String tipo = this.encryptor.decrypt(seleccion.getConfiguracion().getSerie().getProducto().getTipo());
+					
+					String observaciones = "";
+					
+					if(seleccion.getObservaciones()!=null)
+					{
+						observaciones = this.encryptor.decrypt(seleccion.getObservaciones());
+					}
+					
 					SeleccionDTO dto = new SeleccionDTO(uuidSel,referenciaSel,this.encryptor.decrypt(usuario.getUsername()),serie,fondo,ancho,alto,null,armazon,colorArmazon,null,frente,acabadoFrente,
-							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,extrasDecrypt,precioFinal,cantidad,null,null);
+							colorFrente,null,acabadoTirador,colorTirador,null,acabadoRegleta,colorRegleta,extrasDecrypt,precioFinal,cantidad,observaciones,isEspecial,tipo,null,null);
 					
 					selecciones.add(dto);
 				}
@@ -452,6 +592,101 @@ public class OrderService
 		log.info("[ACCION] -- /order-proposal -- {} Ha solicitado un listado de pedidos con un permiso de {} -- {}",usrToken,rol,seguridad);
 		
 		return response;
+	}
+	
+	public List<OrderDTO> getPedidosBak(Usuario usuario,String rol,String seguridad,String usrToken) throws CPException
+	{
+		List<PedidoBackup> pedidos = this.pedidoBakRepo.findByUsuarioPedidoBack(usuario);
+		List<OrderDTO> response = new LinkedList<OrderDTO>();
+		
+		for(PedidoBackup item:pedidos)
+		{
+			String uuid = item.getUuid();
+			String referencia = this.encryptor.decrypt(item.getReferencia());
+			String username = this.encryptor.decrypt(usuario.getUsername());
+			LocalDateTime fecha = item.getFecha();
+			EstadoPedido estado = item.getEstado();
+			
+			List<SeleccionDTO> selecciones = new LinkedList<SeleccionDTO>();
+			
+			for(Map<String,Object> seleccion:item.getContent())
+			{
+			    String referenciaOrder = this.encryptor.decrypt((String) seleccion.get("referencia"));
+			    
+			    Number fondoNum = (Number) seleccion.get("fondo");
+			    float fondo = fondoNum.floatValue();
+			    
+			    Number anchoNum = (Number) seleccion.get("ancho");
+			    float ancho = anchoNum.floatValue();
+			    
+			    Number altoNum = (Number) seleccion.get("alto");
+			    float alto = altoNum.floatValue();
+			    
+			    String armazon = this.encryptor.decrypt((String) seleccion.get("armazon"));
+			    String colorArmazon = this.encryptor.decrypt((String) seleccion.get("colorArmazon"));
+			    
+			    String frente = "-";
+			    String acabadoFrente = "-";
+			    String colorFrente = "-";
+			    
+			    if( !((String)(seleccion.get("frente"))).equals("-"))
+			    {
+			    	 frente = this.encryptor.decrypt((String) seleccion.get("frente"));
+				     acabadoFrente = this.encryptor.decrypt((String) seleccion.get("acabadoFrente"));
+				     colorFrente = this.encryptor.decrypt((String) seleccion.get("colorFrente"));
+			    }
+			    
+			   
+			    String acabadoRegleta = this.encryptor.decrypt((String) seleccion.get("acabadoRegleta"));
+			    String colorRegleta = this.encryptor.decrypt((String) seleccion.get("colorRegleta"));
+			    String acabadoTirador = this.encryptor.decrypt((String) seleccion.get("acabadoTirador"));
+			    String colorTirador = this.encryptor.decrypt((String) seleccion.get("colorTirador"));
+			    			    
+			    List<String> extras = new ObjectMapper().convertValue(seleccion.get("extras"), new TypeReference<List<String>>() {});
+			    
+			    List<String> extrasDecrypt = new LinkedList<>();
+			    
+			    for(String extra : extras) 
+			    {
+			        extrasDecrypt.add(this.encryptor.decrypt(extra));
+			    }
+			    
+			    String serie = this.encryptor.decrypt((String) seleccion.get("serie"));
+			    String observaciones = "";
+			    
+			    if(!((String) seleccion.get("observaciones")).isBlank())
+			    {
+			    	observaciones = this.encryptor.decrypt((String) seleccion.get("observaciones"));
+			    }
+			    			    
+			    Number precioFinalNum = (Number) seleccion.get("precioFinal");
+			    float precioFinal = precioFinalNum.floatValue();
+			    
+			    Number cantidadNum = (Number) seleccion.get("cantidad");
+			    int cantidad = cantidadNum.intValue();
+			    
+			    boolean isEspecial = (boolean) seleccion.get("isEspecial");
+			    
+			    String tipo = (String) seleccion.get("tipo");
+			    
+			    SeleccionDTO seleccionDto = new SeleccionDTO(null, referenciaOrder, username, serie, fondo, ancho, alto, null, armazon, colorArmazon, null, frente, acabadoFrente, colorFrente, null, acabadoTirador, colorTirador, null, acabadoRegleta, colorRegleta, extrasDecrypt, precioFinal, cantidad, observaciones, isEspecial, tipo,null, null);
+			    
+			    selecciones.add(seleccionDto);
+			}
+			
+			OrderDTO order = new OrderDTO(item.getUuid(), referencia, username, fecha, null, estado, selecciones);
+			
+			if(!this.pedidoRepo.findById(uuid).isPresent())
+			{
+				response.add(order);
+			}
+			
+		}
+		
+		log.info("[ACCION] -- /order-proposal-bak -- {} Ha solicitado un listado de copias de pedido con permiso de {} -- {}",usrToken,rol,seguridad);
+		
+		return response;
+		
 	}
 	
 	public void deletePedido(String uuid,String rol,String seguridad,String usrToken) throws CPException
@@ -475,8 +710,81 @@ public class OrderService
 		
 		userPedido.removePedidos(pedido);
 		
+		List<ProductoConfigurado> affected = new LinkedList<ProductoConfigurado>();
+		
+		for(String id:pedido.getProductos())
+		{
+			Optional<ProductoConfigurado> itemOpt = this.seleccionRepo.findById(id);
+			
+			if(itemOpt.isPresent())
+			{
+				ProductoConfigurado item = itemOpt.get();
+				affected.add(item);
+				userPedido.removeProducto(item);
+			}
+		}
+		
+		List<BulkProductosUsuario> bulksAffected = new LinkedList<BulkProductosUsuario>();
+		
+		for(BulkProductosUsuario item:this.bulkRepo.findAll()) 
+		{
+			List<String> productos = item.getProductos();
+		    List<String> productosPedido = pedido.getProductos();
+		    
+		    productos.sort((a, b) -> b.compareTo(a));
+		    productosPedido.sort((a, b) -> b.compareTo(a));
+		   
+		    
+		    if(productos.size() == productosPedido.size() && productos.equals(productosPedido)) 
+		    {
+			    String userUuid = userPedido.getUuid();
+		    	if(userUuid.equals(item.getUsuarioUuid().getUuid()) && this.encryptor.decrypt(item.getReferencia()).equals(this.encryptor.decrypt(pedido.getReferencia())))
+		    	{
+			    	bulksAffected.add(item); 
+			    	userPedido.removeBulk(item);
+		    	}
+		    }
+			
+			
+		}
+		
+		log.info("[ADMIN] -- /orders -- {} Se han borrado {} selecciones asociadas al pedido {} borrado con permiso de  {} -- {}",usrToken,affected.size(),pedido.getUuid(),rol,seguridad);
+		
+		this.seleccionRepo.deleteAll(affected);
+		this.seleccionRepo.flush();
+		
+		this.bulkRepo.deleteAll(bulksAffected);
+		this.bulkRepo.flush();
+		
 		this.userRepo.save(userPedido);
-		this.userRepo.flush();;
+		this.userRepo.flush();
+		
+		
+	}
+	
+	public void deletePedidoBak(String uuid,String rol,String seguridad,String usrToken) throws CPException
+	{
+		Optional<PedidoBackup> pedidoOpt = this.pedidoBakRepo.findById(uuid);
+		
+		if(!pedidoOpt.isPresent())
+		{
+			log.warn("[AVISO] -- /order-proposal-bak -- {} Ha intentado borrar una copia de pedido insxistente con permiso de {} -- {}",usrToken,rol,seguridad);
+			throw new CPException(404,"Datos inexistentes");
+		}
+		
+		PedidoBackup pedido = pedidoOpt.get();
+		
+		log.info("[ADMIN] -- /order-proposal-bak -- {} Ha borrado la copia del pedido {} de la base de datos con permiso de {} -- {}",usrToken,pedido.getUuid(),rol,seguridad);
+		
+		this.pedidoBakRepo.delete(pedido);
+		this.pedidoBakRepo.flush();
+		
+		Usuario userPedido = pedido.getUsuarioPedidoBack();
+		
+		userPedido.removePedidoBak(pedido);
+		
+		this.userRepo.save(userPedido);
+		this.userRepo.flush();
 	}
 	
 	public void actualizarEstado(OrderDTO body,String uuid,String rol,String seguridad,String usrToken) throws CPException
@@ -583,6 +891,145 @@ public class OrderService
 		
 		pedido.setEstado(EstadoPedido.CURSADO);
 		this.pedidoRepo.save(pedido);
+	}
+	
+	private void registerPedidoBak(Usuario usuario,Pedido pedido,List<ProductoConfigurado> selecciones,String rol,String seguridad,String usrToken)
+	{
+		PedidoBackup pedidoBak = new PedidoBackup();
+		
+		pedidoBak.setUuid(pedido.getUuid());
+		pedidoBak.setReferencia(pedido.getReferencia());
+		pedidoBak.setEstado(pedido.getEstado());
+		pedidoBak.setFecha(pedido.getFecha());
+		pedidoBak.setUsuarioPedidoBack(usuario);
+		
+		List<Map<String,Object>> content = new LinkedList<Map<String,Object>>();
+		
+		for(ProductoConfigurado item:selecciones)
+		{
+			Map<String,Object> selContent = new HashMap<String, Object>();
+			
+			String referencia = item.getConfiguracion().getReferencia();
+			String frente = "-";
+			String acabadoFrente = "-";
+			String colorFrente = "-";
+			
+			if(item.getFrente()!=null)
+			{
+				Frente frenteItem = item.getFrente();
+				referencia =  this.encryptor.decrypt(item.getFrente().getReferencia()) + " " + referencia;
+				frente = frenteItem.getNombre();
+				acabadoFrente = item.getAcabadoFrente().getNombre();
+				colorFrente = item.getColorFrente().getNombre();
+			}
+			
+			referencia = this.encryptor.encrypt(referencia);
+			
+			String acabadoTirador = null;
+			String acabadoRegleta = null;
+			String colorTirador = null;
+			String colorRegleta = null;
+			
+			if(item.getAcabadoTirador()!=null)
+			{
+				acabadoTirador = item.getAcabadoTirador().getNombre();
+				if(item.getColorTirador()!=null)
+				{
+					colorTirador = item.getColorTirador().getNombre();
+				}
+				else
+				{
+					colorTirador = item.getCodigoColorTirador();
+				}
+			}
+			
+			if(item.getAcabadoRegleta() != null)
+			{
+				acabadoRegleta = item.getAcabadoRegleta().getNombre();
+				if(item.getColorRegleta()!=null)
+				{
+					colorRegleta = item.getColorRegleta().getNombre();
+				}
+				else
+				{
+					colorRegleta = item.getCodigoColorTirador();
+				}
+		    }
+			
+			String colorArmazon = "Sin color";
+			
+			if(item.getCodigoColorArmazon()==null)
+			{
+				colorArmazon =  item.getColorArmazon().getNombre();
+			}
+			else
+			{
+				colorArmazon = item.getCodigoColorArmazon();
+			}
+			
+			// Estos ternarios asignan el valor las medidas del producto configurado que serían las medidas especiales, en caso de ser nulas, se asignan la de la referencia escogida
+			float fondo = item.getFondo() != null ? item.getFondo() : item.getConfiguracion().getFondo();
+			float ancho = item.getAncho() != null ? item.getAncho() : item.getConfiguracion().getAncho();
+			float alto = item.getAlto() != null ? item.getAlto() : item.getConfiguracion().getAlto();
+			
+			// Si existen medidas especiales se marca que la configuración presenta la etiqueta ESP
+			boolean isEspecial = fondo!=item.getConfiguracion().getFondo() || ancho!=item.getConfiguracion().getAncho() || alto!=item.getConfiguracion().getAlto();
+			
+			List<String> extrasDecrypt = new LinkedList<String>();
+			
+			for(String extra:item.getExtras())
+			{
+				extrasDecrypt.add(extra);
+			}
+			
+			String observaciones = "";
+			
+			if(item.getObservaciones()!=null)
+			{
+				observaciones = item.getObservaciones();
+			}
+			
+			String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
+			serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
+			serie = this.encryptor.encrypt(serie);
+			
+			String tipo = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getTipo());
+			tipo = this.encryptor.encrypt(tipo);
+			
+			selContent.put("referencia",referencia);
+			selContent.put("fondo", fondo);
+			selContent.put("ancho", ancho);
+			selContent.put("alto", alto);
+			selContent.put("armazon", item.getAcabado().getNombre());
+			selContent.put("colorArmazon", colorArmazon);
+			selContent.put("frente",frente);
+			selContent.put("acabadoFrente",acabadoFrente);
+			selContent.put("colorFrente",colorFrente);
+			selContent.put("acabadoRegleta", acabadoRegleta);
+			selContent.put("colorRegleta", colorRegleta);
+			selContent.put("acabadoTirador", acabadoTirador);
+			selContent.put("colorTirador", colorTirador);
+			selContent.put("extras", extrasDecrypt);
+			selContent.put("serie", serie);
+			selContent.put("observaciones", observaciones);
+			selContent.put("precioFinal", item.getPrecioFinal());
+			selContent.put("cantidad", item.getCantidad());
+			selContent.put("isEspecial", isEspecial);
+			selContent.put("tipo", tipo);
+			
+			content.add(selContent);
+		}
+		
+		pedidoBak.setContent(content);
+		
+		usuario.addPedidoBak(pedidoBak);
+		
+		log.info("[ACCION] -- /order-proposal -- {} Ha creado una copia del pedido {} con permiso de {} -- {}",usrToken,pedido.getUuid(),rol,seguridad);
+		
+		this.pedidoBakRepo.save(pedidoBak);
+		this.pedidoBakRepo.flush();
+		this.userRepo.save(usuario);
+		this.userRepo.flush();		
 	}
 	
 }

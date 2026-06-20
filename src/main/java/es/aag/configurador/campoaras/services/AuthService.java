@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -86,6 +87,15 @@ public class AuthService
 	{
 		List<Usuario> usuarios = usuarioRepo.findAll();
 			
+		final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+		final Pattern pattern = Pattern.compile(EMAIL_REGEX);
+		
+		if(body.getEmail() == null && !pattern.matcher(body.getEmail()).matches())
+		{
+			log.warn("[AVISO] -- /register -- Se ha intentado usar un email inválido para registrar un usuario",seguridad);
+			throw new CPException(400,"Datos invalidos");
+		}
+		
 		int index = 0;
 		
 		// Filtro para verificar que no se repite un usuario
@@ -95,7 +105,7 @@ public class AuthService
 			
 			if(encryptor.decrypt(item.getEmail()).equals(body.getEmail()) || encryptor.decrypt(item.getUsername()).equals(body.getUsername()))
 			{	
-				log.info("[AVISO] Se ha intentado acceder con datos de otro usuario - {} -- {}",item.getUSRToken(),seguridad);
+				log.info("[AVISO] -- /register -- Se ha intentado acceder con datos de otro usuario - {} -- {}",item.getUSRToken(),seguridad);
 				throw new CPException(409,"Los datos que rellenas ya existen");
 			}
 			
@@ -513,7 +523,6 @@ public class AuthService
 				capabilities.put("admin_panel",true);
 				capabilities.put("users_read", true);
 		    	capabilities.put("users_write", true);
-		    	capabilities.put("managment",true);
 				break;
 			}
 			case CPConstants.SUPADMIN_ROLE:

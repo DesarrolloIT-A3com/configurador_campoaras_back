@@ -110,5 +110,37 @@ public class OrderRestController
 			return ResponseEntity.status(500).body("Error interno de servidor");		
 		}
 	}
+	
+	@RequestMapping(method = RequestMethod.DELETE,value = "/orders-bak/{uuid}")
+	public ResponseEntity<?> deleteOrderBak(@PathVariable(value="uuid",required=true)final String uuid,
+											HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/orders-bak", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/orders-bak", usuario.getUSRToken());
+			
+			this.service.deletePedidoBak(uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.status(204).build();
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /order-proposal-bak -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
 			
 }

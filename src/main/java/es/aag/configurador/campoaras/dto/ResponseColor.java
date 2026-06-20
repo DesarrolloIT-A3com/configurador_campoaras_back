@@ -13,6 +13,8 @@ public class ResponseColor
 	
 	private String [] acabados;
 	
+	private Integer orden;
+	
 	private byte [] img;
 	
 	// Se añade un setter debido a que este campo puede venir nulo

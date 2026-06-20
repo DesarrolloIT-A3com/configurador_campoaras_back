@@ -802,6 +802,13 @@ private Logger log = LogManager.getLogger();
 		codigoFrente = codigoFrente!=null ? this.encryptor.encrypt(codigoFrente) : codigoFrente;
 		codigoTirador = codigoTirador!=null ? this.encryptor.encrypt(codigoTirador) : codigoTirador;
 		codigoRegleta = codigoRegleta!=null ? this.encryptor.encrypt(codigoRegleta) : codigoRegleta;
+		
+		String observaciones = body.getObservaciones();
+		
+		if(observaciones!=null)
+		{
+			observaciones = this.encryptor.encrypt(observaciones);
+		}
 
 		// Fase de inserción de datos
 		seleccion.setUuid(uuid);
@@ -827,6 +834,7 @@ private Logger log = LogManager.getLogger();
 		seleccion.setExtras(extrasSeleccion);
 		seleccion.setPrecioFinal(precioFinal);
 		seleccion.setCantidad(body.getCantidad());
+		seleccion.setObservaciones(observaciones);
 		seleccion.setFecha(LocalDateTime.now());
 		
 		// Antes de salvar la configuracion se comprueba que el uuid del body en caso de que no venga vacío sea correcto
@@ -1035,8 +1043,13 @@ private Logger log = LogManager.getLogger();
 					float ancho = item.getAncho() != null ? item.getAncho() : item.getConfiguracion().getAncho();
 					float alto = item.getAlto() != null ? item.getAlto() : item.getConfiguracion().getAlto();
 					
+					// Si existen medidas especiales se marca que la configuración presenta la etiqueta ESP
+					boolean isEspecial = fondo!=item.getConfiguracion().getFondo() || ancho!=item.getConfiguracion().getAncho() || alto!=item.getConfiguracion().getAlto();
+					
 					String serie = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getNombre());
 					serie += " "+this.encryptor.decrypt(item.getConfiguracion().getSerie().getVariante());
+					
+					String tipo = this.encryptor.decrypt(item.getConfiguracion().getSerie().getProducto().getTipo());
 					
 					List<String> extrasDecrypt = new LinkedList<String>();
 					
@@ -1045,7 +1058,14 @@ private Logger log = LogManager.getLogger();
 						extrasDecrypt.add(this.encryptor.decrypt(extra));
 					}
 					
-					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,extrasDecrypt,precioFinal, cantidad,null,null);
+					String observaciones = "";
+					
+					if(item.getObservaciones()!=null)
+					{
+						observaciones = this.encryptor.decrypt(item.getObservaciones());
+					}
+					
+					SeleccionDTO seleccion = new SeleccionDTO(uuid, referencia, null,serie,fondo,ancho,alto, precioArmazon, armazon, colorArmazon,precioFrente, frente, acabadoFrente, colorFrente,precioTirador, acabadoTirador, colorTirador,precioRegleta, acabadoRegleta, colorRegleta,extrasDecrypt,precioFinal,cantidad,observaciones,isEspecial,tipo,null,null);
 					selecciones[index] = seleccion;
 				}
 				else

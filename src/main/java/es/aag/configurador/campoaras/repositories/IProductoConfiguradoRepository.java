@@ -6,8 +6,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import es.aag.configurador.campoaras.entities.Configuracion;
 import es.aag.configurador.campoaras.entities.ProductoConfigurado;
+import es.aag.configurador.campoaras.entities.Usuario;
 
 public interface IProductoConfiguradoRepository extends JpaRepository<ProductoConfigurado, String>
 {
 	List<ProductoConfigurado> findByConfiguracion(Configuracion configuracion);
+	
+	List<ProductoConfigurado> findByUsuario(Usuario usuario);
 }

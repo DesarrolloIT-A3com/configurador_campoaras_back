@@ -35,6 +35,9 @@ public class Acabado
 	@Column(nullable = false)
 	private String [] tipos;
 	
+	@Column
+	private int orden = 0;
+	
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(
 		name = "acabado_color",

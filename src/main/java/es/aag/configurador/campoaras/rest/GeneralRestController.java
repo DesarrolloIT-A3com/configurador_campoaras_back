@@ -31,8 +31,10 @@ import es.aag.configurador.campoaras.dto.ResponseSeleccion;
 import es.aag.configurador.campoaras.dto.SeleccionDTO;
 import es.aag.configurador.campoaras.dto.UserGetDTO;
 import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
+import es.aag.configurador.campoaras.entities.ProductoConfigurado;
 import es.aag.configurador.campoaras.entities.Usuario;
 import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
+import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
 import es.aag.configurador.campoaras.repositories.IRolRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.security.GeneralSecurity;
@@ -65,6 +67,9 @@ public class GeneralRestController
 	private IBulkProductosUsuarioRepository bulkRepo;
 	
 	@Autowired
+	private IProductoConfiguradoRepository seleccionRepo;
+	
+	@Autowired
 	private EncryptorService encryptor;
 	
 	private final GeneralSecurity security;
@@ -86,7 +91,7 @@ public class GeneralRestController
 			
 			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/user", usuario.getUSRToken());
 			
-			UserGetDTO response = new UserGetDTO(usuario.getUuid(), this.encryptor.decrypt(usuario.getEmail()), this.encryptor.decrypt(usuario.getUsername()), usuario.getDescuento(), usuario.getSegundoDescuento(), null , null, null, usuario.isVerificado());
+			UserGetDTO response = new UserGetDTO(usuario.getUuid(), this.encryptor.decrypt(usuario.getEmail()), this.encryptor.decrypt(usuario.getUsername()),null,usuario.getDescuento(), usuario.getSegundoDescuento(), null , null, null, usuario.isVerificado());
 			
 			log.info("[ACCION] -- /user -- {} Ha solicitado sus datos de usuario con un permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
 			
@@ -177,6 +182,7 @@ public class GeneralRestController
 	
 	@RequestMapping(method = RequestMethod.PATCH,value = "/configure/{uuid}")
 	public ResponseEntity<?> endConfigure(@PathVariable(value = "uuid",required = true) final String uuid,
+										  @RequestBody(required = false) final Map<String,String> body,
 			HttpServletRequest request,Authentication authentication)
 	{
 		try
@@ -198,13 +204,95 @@ public class GeneralRestController
 			
 			BulkProductosUsuario bulk = bulkOpt.get();
 			
-			bulk.setEnd(true);
-			bulk.setFecha(LocalDateTime.now());
+			if(body!=null && !body.getOrDefault("referencia", CPConstants.MAP_DEFAULT_VALUE).equals(CPConstants.MAP_DEFAULT_VALUE))
+			{
+				String referencia = body.get("referencia");
+				bulk.setReferencia(this.encryptor.encrypt(referencia));
+				
+				log.info("[ACCION] -- /configure -- {} Ha actualizado la referencia de la configuracion {} con permiso de {} -- {}",usuario.getUSRToken(),bulk.getUuid(),usuario.getRol().getNombre(),usuario.getUSRToken());
+			}
+			else
+			{
+				bulk.setEnd(true);
+				bulk.setFecha(LocalDateTime.now());
+				
+				log.info("[ACCION] -- /configure -- {} Ha finalizado la configuracion {} con permiso de {} -- {}",usuario.getUSRToken(),bulk.getUuid(),usuario.getRol().getNombre(),usuario.getUSRToken());
+			}
+			
+			
+			
 			this.bulkRepo.save(bulk);
 			this.bulkRepo.flush();
 			
 			return ResponseEntity.ok().build();
 			
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /configure -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.PATCH,value = "/configure",consumes="application/json")
+	public ResponseEntity<?> patchObservacionConfigure(@RequestBody(required = true) final Map<String,String> body,
+			HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/configure", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/configure", usuario.getUSRToken());
+			
+			String uuid = body.getOrDefault("uuid", CPConstants.MAP_DEFAULT_VALUE);
+			String observacion = body.getOrDefault("observaciones", CPConstants.MAP_DEFAULT_VALUE);
+			
+			if(uuid==null || observacion==null)
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha intentado actualizar una observación de una seleccion con un uuid u observación nulos con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+				throw new CPException(400,"Datos invalidos");
+			}
+			
+			if(uuid.equals(CPConstants.MAP_DEFAULT_VALUE))
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha intentado actualizar una observación de una seleccion con un uuid inexistente con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+				throw new CPException(400,"Datos invalidos");
+			}
+			
+			if(observacion.equals(CPConstants.MAP_DEFAULT_VALUE))
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha intentado actualizar una observación de una seleccion con el campo observación vacío con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+				throw new CPException(400,"Datos invalidos");
+			}
+			
+			Optional<ProductoConfigurado> seleccionOpt = this.seleccionRepo.findById(uuid);
+			
+			if(!seleccionOpt.isPresent())
+			{
+				log.warn("[AVISO] -- /configure -- {} Ha intentado actualizar una observación de una seleccion inexistente con permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
+				throw new CPException(404,"Datos inexistentes");
+			}
+			
+			ProductoConfigurado seleccion = seleccionOpt.get();
+			
+			seleccion.setObservaciones(this.encryptor.encrypt(observacion));
+			
+			this.seleccionRepo.save(seleccion);
+			this.seleccionRepo.flush();
+			
+			return ResponseEntity.ok().build();
 		}
 		catch(CPException ex)
 		{
@@ -320,6 +408,38 @@ public class GeneralRestController
 
 		}
 		
+	}
+	
+	@RequestMapping(method = RequestMethod.GET,value = "/order-proposal-bak",produces="application/json")
+	public ResponseEntity<?> getBakOrders(HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/order-proposal-bak", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/order-proposal-bak", usuario.getUSRToken());
+						
+			List<OrderDTO> response = this.orderService.getPedidosBak(usuario, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			return ResponseEntity.ok().body(response);
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /configure -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+
+		}
 	}
 	
 	@RequestMapping(method = RequestMethod.POST,value = "/order-proposal/send",consumes="multipart/form-data")

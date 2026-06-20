@@ -70,6 +70,9 @@ public class Usuario
 	@OneToMany(mappedBy = "usuarioPedido")
 	private Set<Pedido> pedidos = new HashSet<Pedido>();
 	
+	@OneToMany(mappedBy = "usuarioPedidoBack")
+	private Set<PedidoBackup> pedidosBak = new HashSet<PedidoBackup>();
+	
 	public void addProducto(ProductoConfigurado producto)
 	{
 		this.productos.add(producto);
@@ -98,6 +101,16 @@ public class Usuario
 	public void removePedidos(Pedido pedido)
 	{
 		this.pedidos.remove(pedido);
+	}
+	
+	public void addPedidoBak(PedidoBackup pedido)
+	{
+		this.pedidosBak.add(pedido);
+	}
+	
+	public void removePedidoBak(PedidoBackup pedido)
+	{
+		this.pedidosBak.remove(pedido);
 	}
 	
 }
