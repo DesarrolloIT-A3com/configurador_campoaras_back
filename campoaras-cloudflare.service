@@ -1,0 +1,14 @@
+[Unit]
+Description=Cloudflare Tunnel - Creaciones Campoaras
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cloudflared
+ExecStart=/usr/bin/cloudflared tunnel run --token TU_TOKEN_AQUI
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
