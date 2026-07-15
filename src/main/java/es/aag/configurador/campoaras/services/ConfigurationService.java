@@ -1288,27 +1288,17 @@ private Logger log = LogManager.getLogger();
 			else
 			{
 				int index = 0;
-				float modulo = 0;
-				
-				// Se evita que el primer item sea 0 por división infinita
-				modulo = medidas[0] != 0 ? ancho % medidas[0] : ancho;
-				
-				for(int i = 1;i<medidas.length;i++)
+
+				for(int i = 0; i < medidas.length; i++)
 				{
-					float item = medidas[i];
-					
-					if(item==0)
-					{
-						modulo = ancho;
-					}
-					else
-					{
-						if(modulo>(ancho%item))
-						{
-							modulo = ancho%item;
-							index = i;
-						}
-					}	
+				    if(medidas[i] <= ancho.floatValue())
+				    {
+				        index = i; // se queda con la última medida <= ancho
+				    }
+				    else
+				    {
+				        break; // al estar ordenado, ninguna medida posterior será válida
+				    }
 				}
 				
 				Configuracion configuracion = null;
