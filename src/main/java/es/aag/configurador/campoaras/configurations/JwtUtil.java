@@ -1,7 +1,8 @@
 package es.aag.configurador.campoaras.configurations;
 
-import java.security.Key;
 import java.util.Date;
+
+import javax.crypto.SecretKey;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -20,7 +21,7 @@ public class JwtUtil
 	private final long ACC_EXP_TIME = 10 * 60 * 1000; // 10 minutos
 	private final long REF_EXP_TIME = 3 * 60 * 60 * 1000; // 3 horas
 	
-	private Key getSigningKey()
+	private SecretKey getSigningKey()
 	{
 		return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
 	}
@@ -28,30 +29,30 @@ public class JwtUtil
 	public String generateToken(String token)
 	{
         return Jwts.builder()
-                .setSubject(token)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + ACC_EXP_TIME))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .subject(token)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + ACC_EXP_TIME))
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
                 .compact();
     }
 	
 	public String generateRefreshToken(String uuid)
 	{
 		return Jwts.builder()
-				.setSubject(uuid)
-				.setIssuedAt(new Date())
-				.setExpiration(new Date(System.currentTimeMillis() + REF_EXP_TIME))
-				.signWith(getSigningKey(),SignatureAlgorithm.HS256)
+				.subject(uuid)
+				.issuedAt(new Date())
+				.expiration(new Date(System.currentTimeMillis() + REF_EXP_TIME))
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
 				.compact();
 	}
 	
 	 public String extractSubject(String token) 
 	 {
-	        return Jwts.parserBuilder()
-	                .setSigningKey(getSigningKey())
+	        return Jwts.parser()
+	                .verifyWith(getSigningKey())
 	                .build()
-	                .parseClaimsJws(token)
-	                .getBody()
+	                .parseSignedClaims(token)
+	                .getPayload()
 	                .getSubject();
 	 }
 
@@ -59,10 +60,10 @@ public class JwtUtil
 	 {
 	     try
 	     {
-	         Jwts.parserBuilder()
-	             .setSigningKey(getSigningKey())
+	         Jwts.parser()
+	             .verifyWith(getSigningKey())
 	             .build()
-	             .parseClaimsJws(token);
+	             .parseSignedClaims(token);
 	         return true;
 	     }
 	     catch (ExpiredJwtException e)
@@ -79,11 +80,11 @@ public class JwtUtil
     {
     	try
     	{
-    		Date expiration = Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
+    		Date expiration = Jwts.parser()
+                    .verifyWith(getSigningKey())
                     .build()
-                    .parseClaimsJws(token)
-                    .getBody()
+                    .parseSignedClaims(token)
+                    .getPayload()
                     .getExpiration();
             return expiration.before(new Date());
     	}
