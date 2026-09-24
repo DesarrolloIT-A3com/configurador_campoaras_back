@@ -90,18 +90,18 @@
 		 <dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
-			<version>0.12.0</version>
+			<version>0.13.0</version>
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-impl</artifactId>
-			<version>0.12.0</version>
+			<version>0.13.0</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-jackson</artifactId>
-			<version>0.12.0</version>
+			<version>0.13.0</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -121,6 +121,22 @@
 		    <artifactId>jsoup</artifactId>
 		    <version>1.23.1</version>
 		    <scope>compile</scope>
+		</dependency>
+		<!-- Ecportación/Importación en CSV -->
+		<dependency>
+		    <groupId>org.apache.poi</groupId>
+		    <artifactId>poi</artifactId>
+		    <version>5.5.1</version>
+		</dependency>
+		<dependency>
+		    <groupId>org.apache.poi</groupId>
+		    <artifactId>poi-ooxml</artifactId>
+		    <version>5.5.1</version>
+		</dependency>
+		<dependency>
+		    <groupId>org.apache.poi</groupId>
+		    <artifactId>poi-ooxml-lite</artifactId>
+		    <version>5.5.1</version>
 		</dependency>
 	</dependencies>
 	<build>
@@ -147,6 +163,7 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+					<jvmArguments>--add-exports java.base/sun.security.util=ALL-UNNAMED</jvmArguments>
 				</configuration>
 			</plugin>
 		</plugins>

@@ -1,5 +1,8 @@
 package es.aag.configurador.campoaras.configurations;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 
 import javax.crypto.SecretKey;
@@ -10,7 +13,6 @@ import org.springframework.stereotype.Component;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 
 @Component
@@ -23,7 +25,17 @@ public class JwtUtil
 	
 	private SecretKey getSigningKey()
 	{
-		return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+		try
+		{
+			MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+			byte[] normalizedKeyBytes = sha256.digest(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+			return Keys.hmacShaKeyFor(normalizedKeyBytes); // siempre 32 bytes -> HmacSHA256
+		}
+		catch (NoSuchAlgorithmException e)
+		{
+			// SHA-256 es un algoritmo obligatorio en cualquier JVM estandar; no deberia ocurrir nunca.
+			throw new IllegalStateException("SHA-256 no disponible en esta JVM", e);
+		}
 	}
 	
 	public String generateToken(String token)
