@@ -8,6 +8,10 @@ import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.openxml4j.exceptions.NotOfficeXmlFileException;
+import org.apache.poi.openxml4j.exceptions.OLE2NotOfficeXmlFileException;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.multipart.MultipartFile;
@@ -412,5 +416,92 @@ public class GeneralSecurity
 	    }
 	}
 	
+	public void validateExcel(MultipartFile file, String endpoint, String rol, String seguridad, String userToken) throws CPException
+	{
+	    // FIRMA XLSX (todo .xlsx es un contenedor ZIP OOXML: PK\x03\x04)
+	    final byte[] XLSX_MAGIC = {(byte)0x50,(byte)0x4B,(byte)0x03,(byte)0x04};
+
+	    final String ALLOWED_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+	    final long MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+	    // 1) Fichero vacío
+	    if(file.isEmpty())
+	    {
+	        log.warn("[AVISO] -- {} -- {} Ha introducido un fichero vacío con permiso de {} -- {}",endpoint,userToken,rol,seguridad);
+	        throw new CPException(400,"Datos invalidos");
+	    }
+
+	    // 2) Tamaño máximo
+	    if(file.getSize() > MAX_SIZE_BYTES)
+	    {
+	        long size = file.getSize() / 1024 / 1024;
+	        log.warn("[AVISO] -- {} -- {} Ha introducido un fichero que supera los 5MB de tamaño siendo de tamaño {} MB con permiso de {} -- {}",endpoint,userToken,size,rol,seguridad);
+	        throw new CPException(400,"Datos invalidos");
+	    }
+
+	    // 3) MIME declarado
+	    String declaredMime = file.getContentType();
+	    if(declaredMime == null || !ALLOWED_MIME_TYPE.equals(declaredMime))
+	    {
+	        log.warn("[AVISO] -- {} -- {} Ha introducido un fichero no permitido con un MIME {} que no es xlsx con permiso de {} -- {}",endpoint,userToken,declaredMime,rol,seguridad);
+	        throw new CPException(400,"Datos invalidos");
+	    }
+
+	    // 4) Validación de contenido: magic number + apertura real con Apache POI
+	    boolean isXlsx = false;
+
+	    try (InputStream is = file.getInputStream())
+	    {
+	        // 4.1) Magic number (descarta rápidamente lo que no es ni ZIP)
+	        byte[] header = is.readNBytes(4);
+	        boolean magicOk = header.length >= 4
+	                && header[0] == XLSX_MAGIC[0] && header[1] == XLSX_MAGIC[1]
+	                && header[2] == XLSX_MAGIC[2] && header[3] == XLSX_MAGIC[3];
+
+	        if(!magicOk)
+	        {
+	            log.warn("[AVISO] -- {} -- {} El fichero no tiene firma ZIP (PK\\x03\\x04), no puede ser un xlsx con permiso de {} -- {}",endpoint,userToken,rol,seguridad);
+	            throw new CPException(400,"Datos invalidos");
+	        }
+
+	        // 4.2) Validación profunda: abrir como XSSFWorkbook
+	        //      Necesitamos un InputStream nuevo (o hacer mark/reset) porque ya hemos consumido los 4 bytes.
+	        try (InputStream isPoi = file.getInputStream();
+	             XSSFWorkbook wb = new XSSFWorkbook(isPoi))
+	        {
+	            // Si llegamos aquí sin excepción, es un .xlsx válido
+	            isXlsx = wb.getNumberOfSheets() >= 0;
+	        }
+	    }
+	    catch(NotOfficeXmlFileException ex)
+	    {
+	        // El ZIP no contiene la estructura OOXML esperada (.docx, .pptx, .jar, .zip renombrado…)
+	        log.warn("[AVISO] -- {} -- {} El fichero es un ZIP pero no un OOXML xlsx válido con permiso de {} -- {}",endpoint,userToken,rol,seguridad);
+	        isXlsx = false;
+	    }
+	    catch(IOException ex)
+	    {
+	        log.error("[ERROR] -- {} -- {} Ha saltado un error IOException al leer los bytes del fichero -- {}",endpoint,userToken,seguridad);
+	        isXlsx = false;
+	    }
+	    catch(IndexOutOfBoundsException ex)
+	    {
+	        log.warn("[ERROR] -- {} -- {} Ha saltado un error IndexOutOfBoundsException debido a que el fichero no posee el número de bytes necesario (4) para la validación de un magic number -- {}",endpoint,userToken,seguridad);
+	        isXlsx = false;
+	    }
+	    catch(RuntimeException ex)
+	    {
+	        // Apache POI lanza cosas como POIXMLException, XmlException, etc. que envuelven problemas de parseo.
+	        log.warn("[AVISO] -- {} -- {} Error inesperado validando el xlsx con Apache POI con permiso de {} -- {}",endpoint,userToken,rol,seguridad);
+	        isXlsx = false;
+	    }
+
+	    if(!isXlsx)
+	    {
+	        log.warn("[AVISO] -- {} -- {} Ha introducido un fichero que no es un xlsx con permiso de {} -- {}",endpoint,userToken,rol,seguridad);
+	        throw new CPException(400,"Datos invalidos");
+	    }
+	}	
 	
 }
