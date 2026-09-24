@@ -1,5 +1,6 @@
 package es.aag.configurador.campoaras.rest;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -7,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -30,6 +33,7 @@ import es.aag.configurador.campoaras.services.AdminService;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Controlador encargado de las acciones de administración relacionado con gestión de usuarios
@@ -49,7 +53,7 @@ public class AdminRestController
 	private IRolRepository rolRepo;
 	
 	@Autowired
-	private AdminService adminService;
+	private AdminService adminService;	
 	
 	private final GeneralSecurity security;
 	
@@ -372,6 +376,85 @@ public class AdminRestController
 			log.error("[ERROR] -- /export-data -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
 			log.error("[DETAILS]",ex);
 			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.POST,value = "/export-excel",produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",consumes="application/json")
+	public ResponseEntity<StreamingResponseBody> exportDataExcel(@RequestBody(required = true) Map<String,String> body,
+			HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+	{
+		String ip = this.security.getClientIPAddress(request);
+		String seguridad = this.security.getIpInfo(ip, request);
+		ObjectMapper objectMapper = new ObjectMapper();
+
+		try
+		{
+			Usuario usuario = this.security.isAuth(userRepo, "/export-excel", seguridad);
+
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/export-excel", usuario.getUSRToken());
+
+			String verCode = body.get("codigo");
+
+			String nombreArchivo = CPConstants.IMG_PATH+"/"+"productos_" + usuario.getUuid() + ".xlsx";
+
+			response.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").toString());
+			response.setHeader(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+					.filename(nombreArchivo, StandardCharsets.UTF_8)
+					.build()
+					.toString());
+	 
+			this.adminService.exportExcel(usuario.getUuid(), verCode, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken(), response);
+	 
+			return null;
+		}
+		catch(CPException ex)
+		{
+			log.error("[ERROR] -- /export-excel -- {} -- {}",ex.getMessage(),seguridad);
+			CPConstants.WRITE_ERROR(response, ex.getCode(), ex.toMap(),objectMapper);
+			return null;
+		}
+		catch(Exception ex)
+		{
+			log.error("[ERROR] -- /export-excel -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			CPConstants.WRITE_ERROR(response, 500, Map.of("mensaje", "Error interno de servidor"),objectMapper);
+			return null;
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.POST,value = "/import-excel",consumes = "multipart/form-data")
+	public ResponseEntity<?> importDataExcel(@RequestPart(value = "code",required = true)Map<String,String> body,
+											 @RequestPart(value = "productos",required = true)MultipartFile excel,
+											 HttpServletRequest request,Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+		
+			Usuario usuario = this.security.isAuth(userRepo, "/import-excel", seguridad);
+
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.SUPADMIN_ROLE, seguridad, "/import-excel", usuario.getUSRToken());
+			
+			this.security.validateExcel(excel, "/import-excel", usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			String verCode = body.get("codigo");
+			
+			List<Map<String,String>> response = this.adminService.importExcel(excel, usuario.getUuid(), verCode, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());			
+			return ResponseEntity.ok().body(response);
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /import-excel -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");
 		}
 	}
 }
