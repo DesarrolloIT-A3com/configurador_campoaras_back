@@ -1,20 +1,32 @@
 package es.aag.configurador.campoaras.services;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -54,7 +66,9 @@ import es.aag.configurador.campoaras.repositories.ISerieRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.utils.CPConstants;
 import es.aag.configurador.campoaras.utils.CPException;
+import es.aag.configurador.campoaras.utils.ExcelUtils;
 import es.aag.configurador.campoaras.utils.Validations;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Servicio encargado de las acciones de administración
@@ -1185,4 +1199,418 @@ public class AdminService
 	    
 	    log.info("[ADMIN] -- /import-data -- {} Ha importado una base de datos en JSON de productos con permiso de {} -- {}",usrToken,rol,seguridad);
 	}
+	
+	public void exportExcel(String uuid,String verCode,String rol,String seguridad,String usrToken,HttpServletResponse response) throws CPException
+	{
+		List<AdminVerification> verificaciones = this.verRepo.findByAdminUuid(uuid);
+ 
+		validation.initialize(null, null, this.acabadoRepo, null, null, null, this.encryptor);
+ 
+		AdminVerification found = null;
+ 
+		for(AdminVerification item:verificaciones)
+		{
+			LocalDateTime now = LocalDateTime.now();
+ 
+			if(!now.isAfter(item.getEndVerCode()))
+			{
+				if(this.encoder.matches(verCode, item.getVerCode()))
+				{
+					found = item;
+				}
+			}
+		}
+ 
+		if(found == null)
+		{
+			log.warn("[AVISO] -- /export-excel -- {} Ha introducido un código de verificacion erroneo para exportar la base de datos con permiso de {} -- {}");
+			throw new CPException(403,"No tienes permiso");
+		}
+ 
+		this.verRepo.deleteAll(verificaciones);
+		this.verRepo.flush();
+  
+		XSSFWorkbook workbook = null;
+ 
+		try
+		{
+			workbook = new XSSFWorkbook();
+			ExcelUtils utils = new ExcelUtils();
+			CellStyle estiloTitulo = utils.crearEstiloTitulo(workbook);
+			CellStyle estitloCabecera = utils.crearEstiloCabecera(workbook);
+ 
+			List<Producto> productos = this.productoRepo.findAll();
+			productos.sort(Comparator.comparing(Producto::getOrden));
+ 
+			for(Producto producto:productos)
+			{
+				String nameHoja = this.encryptor.decrypt(producto.getNombre());
+ 
+				Sheet sheet = workbook.createSheet(nameHoja);
+ 
+				int filaActual = 0;
+				Set<Configuracion> configuraciones = null;
+ 
+				List<Serie> series = this.serieRepo.findByProducto(producto);
+				series.sort(Comparator.comparing(Serie::getOrden));
+				
+				for(Serie serie:series)
+				{
+					 configuraciones = serie.getConfiguracion();
+ 
+					 // Nombre de la variante, comienzo de la fila
+					 int columnasSerie = 10; // columnas fijas (referencia..alto especial)
+					 Set<Configuracion> confParaColumnas = serie.getConfiguracion();
+					 if (confParaColumnas != null && !confParaColumnas.isEmpty())
+					 {
+					     Configuracion primera = confParaColumnas.iterator().next();
+					     if (primera.getArmazon() != null)
+					     {
+					         columnasSerie += primera.getArmazon().size();
+					     }
+					 }
+					 int ultimaColumnaTitulo = Math.max(0, columnasSerie - 1);
+
+					 utils.crearTituloFusionado(
+					         sheet,
+					         estiloTitulo,
+					         filaActual,
+					         ultimaColumnaTitulo,
+					         this.encryptor.decrypt(serie.getVariante()));
+
+					 filaActual++;
+ 
+					 // Configuracion, nombres y datos
+					 configuraciones = serie.getConfiguracion();
+					 Row filaCabecera = null;
+ 
+					 for(Configuracion config:configuraciones)
+					 {
+						 filaCabecera = utils.createCabecera(sheet, estitloCabecera, filaActual, config, this.encryptor);
+						 break;
+					 }
+					 filaActual++;
+					 
+					 List<Configuracion> dataConfiguracion = new ArrayList<Configuracion>(configuraciones);
+					 dataConfiguracion.sort(Comparator.comparing(Configuracion::getFondo)
+							 .thenComparing(Configuracion::getAncho));
+ 
+					 for(Configuracion config:dataConfiguracion)
+					 {
+						 Row filaDatos = utils.createDatos(sheet, filaActual, config, encryptor);
+						 filaActual++;
+					 }
+ 
+					 Row filaVacia = sheet.createRow(filaActual);
+					 Cell celda = filaVacia.createCell(0);
+					 celda.setCellValue("");
+					 filaActual++;
+ 
+				}
+ 
+ 
+			}
+ 
+			workbook.write(response.getOutputStream());
+		}
+		catch(IOException ex)
+		{
+			log.warn("[AVISO] -- /export-excel -- {} Ha introducido un código de verificacion erroneo para exportar la base de datos con permiso de {} -- {}");
+			throw new CPException(500,"Error interno de servidor");
+		}
+	}
+	
+	public List<Map<String,String>> importExcel(MultipartFile excel,String uuid,String verCode,String rol,String seguridad,String usrToken) throws CPException
+	{
+		List<AdminVerification> verificaciones = this.verRepo.findByAdminUuid(uuid);
+		 
+		validation.initialize(this.productoRepo, null, this.acabadoRepo, null, this.serieRepo, this.configRepo, this.encryptor);
+ 
+		AdminVerification found = null;
+ 
+		for(AdminVerification item:verificaciones)
+		{
+			LocalDateTime now = LocalDateTime.now();
+ 
+			if(!now.isAfter(item.getEndVerCode()))
+			{
+				if(this.encoder.matches(verCode, item.getVerCode()))
+				{
+					found = item;
+				}
+			}
+		}
+ 
+		if(found == null)
+		{
+			log.warn("[AVISO] -- /export-excel -- {} Ha introducido un código de verificacion erroneo para exportar la base de datos con permiso de {} -- {}");
+			throw new CPException(403,"No tienes permiso");
+		}
+ 
+		this.verRepo.deleteAll(verificaciones);
+		this.verRepo.flush();
+		
+		InputStream data = null;
+		
+		List<Map<String,String>> resumen = new LinkedList<Map<String,String>>();
+		Set<Configuracion> newConfiguraciones = new HashSet<Configuracion>();
+
+		
+		ExcelUtils utils = new ExcelUtils();
+		XSSFWorkbook workbook = null;
+		try
+		{
+			data = excel.getInputStream();
+			
+			workbook = new XSSFWorkbook(data);
+			
+			// Lectura de hojas
+			for(Sheet sheet:workbook)
+			{
+				Map<String,String> productosInfo = new HashMap<String, String>();
+				
+				Map<String,String> configInfo = new HashMap<String, String>();
+				
+				String nombreHoja = sheet.getSheetName();
+				
+				Producto producto = this.validation.findProducts(nombreHoja);
+				
+				if(producto!=null)
+				{
+					log.info("[DEBUG] Producto {} leido",this.encryptor.decrypt(producto.getNombre()));
+					int numFilas = sheet.getLastRowNum();
+					
+					if(numFilas!=-1)
+					{
+						// Guarda 3 posibles valores, estado = 0 esperando título, estado = 1 esperando cabecera, estado = 2 leyendo datos, -1 error en la lectura de variante se buscará la siguiente
+						int estado = 0;
+						
+						String nombreVariante = "";
+						Serie serie = null;
+						List<String> columnasVariables = new ArrayList<String>();
+						
+						for(int i = 0;i < numFilas;i++)
+						{
+							Map<String,String> seriesInfo = new HashMap<String,String>();
+							
+							Row fila = sheet.getRow(i);
+							
+							DataFormatter formatter = new DataFormatter();
+							
+							if(estado==0)
+							{
+								// Lectura del nombre de la variante
+								nombreVariante = formatter.formatCellValue(fila.getCell(0));
+								List<Serie> seriesFilter = this.serieRepo.findByProducto(producto);
+								
+								for(Serie item:seriesFilter)
+								{
+									if(this.encryptor.decrypt(item.getVariante()).equals(nombreVariante))
+									{
+										serie = item;
+										break;
+									}
+								}
+							
+								
+								
+								if(serie==null)
+								{
+									seriesInfo.put("tipo", "variante");
+									seriesInfo.put("nombre", nombreVariante);
+									seriesInfo.put("motivo", "El formato del xlsx es erroneo o la variante a buscar no existe");
+									resumen.add(seriesInfo);
+									estado = -1;
+								}
+								else
+								{
+									log.info("[DEBUG] Variante {} leida",nombreVariante);
+									estado = 1;
+								}
+							}
+							else if(estado == 1)
+							{
+								// Lectura de la cabecera de datos
+								List<String> columnas = new LinkedList<String>();
+								
+								if(utils.isRowBlank(fila))
+								{
+									estado = 0;
+								}
+								else
+								{
+									short ultimaColumna = fila.getLastCellNum();
+									
+									for(int c = 0;c < ultimaColumna;c++)
+									{
+										columnas.add(formatter.formatCellValue(fila.getCell(c)));
+									}
+									
+									Set<Configuracion> configuraciones = serie.getConfiguracion();
+									
+									for(Configuracion config:configuraciones)
+									{
+										estado = !utils.validateHeader(config, columnas, this.encryptor) ? -1 : 2;
+										break;
+									}
+									
+									if(estado!=-1)
+									{
+										columnasVariables = utils.extractVariableHeaders(columnas);
+										log.info("[DEBUG] Columnas de la variante {} validadas",nombreVariante);
+
+									}
+									else
+									{
+										seriesInfo.put("tipo", "variante");
+										seriesInfo.put("nombre", nombreVariante);
+										seriesInfo.put("motivo", "El formato de la cabecera de configuración es inválido");
+										resumen.add(seriesInfo);
+									}
+								}
+							}
+							else if(estado == 2)
+							{
+								// Lectura de datos	- primero se comprueba que la celda no esté vacía
+								if(utils.isRowBlank(fila))
+								{
+									estado = 0;
+								}
+								else
+								{
+									List<String> columnas = new LinkedList<String>();
+									
+									short ultimaColumna = fila.getLastCellNum();
+									
+									for(int c = 0;c < ultimaColumna;c++)
+									{
+										columnas.add(formatter.formatCellValue(fila.getCell(c)));
+									}
+									
+									String referencia = columnas.get(0);
+									
+									float fondo = utils.redondearColumna(columnas.get(1));
+									float ancho = utils.redondearColumna(columnas.get(2));
+									float alto = utils.redondearColumna(columnas.get(3));
+									float altoMax = utils.redondearColumna(columnas.get(4));
+									float fondoMin = utils.redondearColumna(columnas.get(5));
+									float fondoMax = utils.redondearColumna(columnas.get(6));
+									float fondoEspecial = utils.redondearColumna(columnas.get(7));
+									float anchoEspecial = utils.redondearColumna(columnas.get(8));
+									float altoEspecial = utils.redondearColumna(columnas.get(9));
+									
+									List<Map<String,Object>> armazon = new LinkedList<Map<String,Object>>();
+									
+									for(int c = 0;c < columnasVariables.size();c++)
+									{
+										Map<String,Object> value = new HashMap<String, Object>();
+										Acabado acabado = this.validation.findAcabado(columnasVariables.get(c));
+										if(acabado!=null && columnas.size()>c+10)
+										{
+											// Se coloca c+10 ya que se da por hecho que el puntero está en la zona de acabados
+											value.put("nombre", this.encryptor.encrypt(columnasVariables.get(c)));
+											value.put("precio", utils.redondearColumna(columnas.get(c+10)));
+											armazon.add(value);
+										}
+										else
+										{
+											configInfo.put("tipo", "configuracion");
+											configInfo.put("referencia", referencia);
+											configInfo.put("motivo", "El acabado "+columnasVariables.get(c)+" no existe en la base de datos");
+											resumen.add(configInfo);
+										}
+									}
+									
+									Configuracion config = new Configuracion();
+									Optional<Configuracion> optConf = this.configRepo.findById(referencia);
+									
+									if(optConf.isPresent())
+									{
+										config = optConf.get();
+									}
+									
+									config.setReferencia(referencia);
+									config.setFondo(fondo);
+									config.setAncho(ancho);
+									config.setAlto(alto);
+									config.setAltoMax(altoMax);
+									config.setFondoMin(fondoMin);
+									config.setFondoMax(fondoMax);
+									config.setPrecioMedidaFondoEsp(fondoEspecial);
+									config.setPrecioMedidaAnchoEsp(anchoEspecial);
+									config.setPrecioMedidaAltoEsp(altoEspecial);
+									config.setArmazon(armazon);
+									
+									newConfiguraciones.add(config);
+									log.info("[DEBUG] Configuracion {} de la variante {} registrada",referencia,nombreVariante);
+
+								}
+								
+								
+								
+								
+							}
+							else if(estado == -1)
+							{
+								// Lectura del nombre de la variante
+								nombreVariante = formatter.formatCellValue(fila.getCell(0));
+								serie = this.validation.findSerie(nombreVariante);
+								
+								if(serie!=null)
+								{
+									estado = 1;
+								}
+								else
+								{
+									log.info("[DEBUG] Errores al leer variantes o configuraciones del producto {}",this.encryptor.decrypt(producto.getNombre()));
+								}
+							}
+						}
+					}
+					else
+					{
+						productosInfo.put("tipo", "producto");
+						productosInfo.put("nombre", nombreHoja);
+						productosInfo.put("motivo", "Hoja vacía no se pueden revisar variantes");
+						resumen.add(productosInfo);
+						log.info("[DEBUG] Hoja del producto {} vacia",this.encryptor.decrypt(producto.getNombre()));
+
+					}
+				}
+				else
+				{
+					productosInfo.put("tipo", "producto");
+					productosInfo.put("nombre", nombreHoja);
+					productosInfo.put("motivo", "No existe en la base de datos, revisar nombre hoja");
+					resumen.add(productosInfo);
+				}
+				
+				
+			}
+			
+			this.configRepo.saveAll(newConfiguraciones);
+		}
+		catch(IOException ex)
+		{
+			log.error("[ERROR] Ha saltado un error de IOException -- causa {}",ex);
+		}
+		finally
+		{
+			if(workbook!=null)
+			{
+				try
+				{
+					workbook.close();
+				}
+				catch(IOException ex)
+				{
+					
+				}
+			}
+		}
+		
+		this.validation.destroy();
+		return resumen;
+	}
+	
 }

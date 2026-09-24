@@ -1,10 +1,19 @@
 package es.aag.configurador.campoaras.utils;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.http.MediaType;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import es.aag.configurador.campoaras.configurations.DotEnvInitializer;
 import io.github.cdimascio.dotenv.Dotenv;
+import jakarta.servlet.http.HttpServletResponse;
 
 public final class CPConstants 
 {
@@ -79,6 +88,33 @@ public final class CPConstants
     	
     	return map;
     }
+    
+    /**
+	 * Escribe un cuerpo de error como JSON directamente en el HttpServletResponse.
+	 * Se usa SOLO en las ramas de error de este endpoint, porque el tipo de
+	 * retorno del metodo (ResponseEntity<StreamingResponseBody>) no admite
+	 * devolver un Map o un String como cuerpo -- ver explicacion en el issue
+	 * #25996 de spring-framework sobre ResponseEntity<?> + StreamingResponseBody.
+	 *
+	 * Usa el ObjectMapper que ya tengas inyectado en la clase si lo tienes; si no,
+	 * este @Autowired de campo basta sin tocar el constructor existente.
+	 */
+	public final static void WRITE_ERROR(HttpServletResponse response, int status, Object cuerpo,ObjectMapper objectMapper)
+	{
+		final Logger log = LogManager.getLogger();
+		
+		try
+		{
+			response.setStatus(status);
+			response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+			response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+			objectMapper.writeValue(response.getWriter(), cuerpo);
+		}
+		catch(IOException ioEx)
+		{
+			log.error("[ERROR] No se pudo escribir la respuesta de error de /export-excel", ioEx);
+		}
+	}
     
     // VALORES
     public static final String MAP_DEFAULT_VALUE = "CP-novalue";
