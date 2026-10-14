@@ -1551,6 +1551,26 @@ public class ManagmentService
 				this.colorRepo.save(toDelete);
 				this.colorRepo.delete(toDelete);
 				this.colorRepo.flush();
+				
+				// Se reordenan los colores
+				List<Color> toSort = this.colorRepo.findAll();
+				toSort.sort(Comparator.comparing(Color::getOrden));
+				
+				int index = 1;
+				for(Color item:toSort)
+				{
+
+					if((index+1)<toSort.size())
+					{
+						if(item.getOrden()!=index)
+						{
+							item.setOrden(index);
+						}
+					}
+					index++;
+				}
+				this.colorRepo.saveAll(toSort);
+				this.colorRepo.flush();
 				break;
 			}
 			default:
