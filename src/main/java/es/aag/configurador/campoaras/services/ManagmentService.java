@@ -404,6 +404,25 @@ public class ManagmentService
 				this.productoRepo.delete(toDelete);
 				this.productoRepo.flush();
 				
+				// Se reordenan los productos
+				List<Producto> toSort = this.productoRepo.findAll();
+				toSort.sort(Comparator.comparing(Producto::getOrden));
+				
+				int index = 1;
+				for(Producto item:toSort)
+				{
+
+					if((index+1)<toSort.size())
+					{
+						if(item.getOrden()!=index)
+						{
+							item.setOrden(index);
+						}
+					}
+					index++;
+				}
+				this.productoRepo.saveAll(toSort);
+				this.productoRepo.flush();
 				break;
 			}
 			default:
@@ -715,6 +734,26 @@ public class ManagmentService
 				
 				log.info("[ADMIN] -- /series -- {} Ha eliminado la serie {} de la base de datos con permiso de {} -- {}",usrToken,toDelete.getUuid(),rol,seguridad);
 				this.seriesRepo.delete(toDelete);
+				
+				// Se reordenan las variantes
+				List<Serie> toSort = this.seriesRepo.findAll();
+				toSort.sort(Comparator.comparing(Serie::getOrden));
+				
+				int index = 1;
+				for(Serie item:toSort)
+				{
+
+					if((index+1)<toSort.size())
+					{
+						if(item.getOrden()!=index)
+						{
+							item.setOrden(index);
+						}
+					}
+					index++;
+				}
+				this.seriesRepo.saveAll(toSort);
+				this.seriesRepo.flush();
 				break;
 			}
 			default:
@@ -1119,6 +1158,25 @@ public class ManagmentService
 				this.acabadoRepo.delete(toDelete);
 				this.acabadoRepo.flush();
 				
+				// Se reordenan los acabados
+				List<Acabado> toSort = this.acabadoRepo.findAll();
+				toSort.sort(Comparator.comparing(Acabado::getOrden));
+				
+				int index = 1;
+				for(Acabado item:toSort)
+				{
+
+					if((index+1)<toSort.size())
+					{
+						if(item.getOrden()!=index)
+						{
+							item.setOrden(index);
+						}
+					}
+					index++;
+				}
+				this.acabadoRepo.saveAll(toSort);
+				this.acabadoRepo.flush();
 				break;
 			}
 			default:
@@ -1492,6 +1550,26 @@ public class ManagmentService
 				log.info("[ADMIN] -- /colores -- {} Ha eliminado el color {} de la base de datos con permiso de {} -- {}",usrToken,toDelete.getUuid(),rol,seguridad);
 				this.colorRepo.save(toDelete);
 				this.colorRepo.delete(toDelete);
+				this.colorRepo.flush();
+				
+				// Se reordenan los colores
+				List<Color> toSort = this.colorRepo.findAll();
+				toSort.sort(Comparator.comparing(Color::getOrden));
+				
+				int index = 1;
+				for(Color item:toSort)
+				{
+
+					if((index+1)<toSort.size())
+					{
+						if(item.getOrden()!=index)
+						{
+							item.setOrden(index);
+						}
+					}
+					index++;
+				}
+				this.colorRepo.saveAll(toSort);
 				this.colorRepo.flush();
 				break;
 			}

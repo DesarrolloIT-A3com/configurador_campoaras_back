@@ -57,7 +57,7 @@ public class OrderRestController
 			
 			Usuario usuario = this.security.isAuth(userRepo, "/producto-configurado", seguridad);
 			
-			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.ADMIN_ROLE, seguridad, "/producto-configurado", usuario.getUSRToken());
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.COMERCIAL_ROLE, seguridad, "/producto-configurado", usuario.getUSRToken());
 			
 			List<ResponseSeleccion> response =  this.service.getSelecciones(isEnd, uuid, usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
 			
