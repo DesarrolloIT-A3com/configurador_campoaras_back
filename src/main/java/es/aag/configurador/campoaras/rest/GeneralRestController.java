@@ -211,6 +211,17 @@ public class GeneralRestController
 				
 				log.info("[ACCION] -- /configure -- {} Ha actualizado la referencia de la configuracion {} con permiso de {} -- {}",usuario.getUSRToken(),bulk.getUuid(),usuario.getRol().getNombre(),usuario.getUSRToken());
 			}
+			else if(body!=null  && !body.getOrDefault("open", CPConstants.MAP_DEFAULT_VALUE).equals(CPConstants.MAP_DEFAULT_VALUE))
+			{
+				String open = body.get("open");
+				if(open.equalsIgnoreCase("true"))
+				{
+					bulk.setEnd(false);
+					bulk.setFecha(LocalDateTime.now());
+					
+					log.info("[ACCION] -- /configure -- {} Ha abierto la configuracion {} con permiso de {} -- {}",usuario.getUSRToken(),bulk.getUuid(),usuario.getRol().getNombre(),usuario.getUSRToken());
+				}
+			}
 			else
 			{
 				bulk.setEnd(true);

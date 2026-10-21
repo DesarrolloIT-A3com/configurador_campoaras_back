@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import es.aag.configurador.campoaras.entities.BulkProductosUsuario;
 import es.aag.configurador.campoaras.entities.Pedido;
 import es.aag.configurador.campoaras.entities.PedidoBackup;
-import es.aag.configurador.campoaras.entities.PedidoBackup;
 import es.aag.configurador.campoaras.entities.ProductoConfigurado;
 import es.aag.configurador.campoaras.entities.Usuario;
 import es.aag.configurador.campoaras.repositories.IBulkProductosUsuarioRepository;
@@ -25,6 +24,7 @@ import es.aag.configurador.campoaras.repositories.IPedidoRepository;
 import es.aag.configurador.campoaras.repositories.IProductoConfiguradoRepository;
 import es.aag.configurador.campoaras.repositories.IUsuarioRepository;
 import es.aag.configurador.campoaras.services.EncryptorService;
+import es.aag.configurador.campoaras.utils.EstadoPedido;
 
 @Component
 public class CampoarasScheduled 
@@ -59,6 +59,7 @@ public class CampoarasScheduled
 	public void deleteOldConfiguration()
 	{
 		LocalDateTime now = LocalDateTime.now().minusDays(45);
+		LocalDateTime nowCursed = LocalDateTime.now().minusDays(25);
 		log.info("[ADMIN] -- /schedule -- Comienzo del proceso de eliminación de configuraciones obsoletas");
 		List<BulkProductosUsuario> bulks = this.bulkRepo.findAll();
 		List<PedidoBackup> pedidosBacks = this.pedidoBakRepo.findAll();
@@ -129,11 +130,19 @@ public class CampoarasScheduled
 		for(PedidoBackup pedido:pedidosBacks)
 		{
 			boolean isOld = true;
+			EstadoPedido estado = pedido.getEstado();
 			LocalDateTime other = pedido.getFecha();
 			
 			if(other!=null)
 			{
-				isOld = now.isAfter(other);
+				if(estado.equals(EstadoPedido.CURSADO))
+				{
+					isOld = nowCursed.isAfter(other);
+				}
+				else if(estado.equals(EstadoPedido.NO_CURSADO))
+				{
+					isOld = now.isAfter(other);
+				}
 			}
 			else
 			{

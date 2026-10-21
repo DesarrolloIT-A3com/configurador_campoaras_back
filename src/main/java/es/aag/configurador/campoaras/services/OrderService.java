@@ -887,6 +887,13 @@ public class OrderService
 		
 		this.mailService.sendOrderMail(pdfBytes, username, referencia, pedido.getFecha(), CPConstants.ORDER_MAIL, usuario.getUSRToken(), seguridad);
 		
+		if(usuario.getComercial()!=null && !usuario.getComercial().isBlank())
+		{
+			String comercial = this.encryptor.decrypt(usuario.getComercial());
+			this.mailService.sendOrderMail(pdfBytes,username,referencia,pedido.getFecha(),comercial,usuario.getUSRToken(),seguridad);
+			log.info("[ACCION -- /order-proposal/send -- {} Ha enviado el pedido {} correctamente al comercial designado con permiso de {} -- {}",usuario.getUSRToken(),uuid,usuario.getRol().getNombre(),seguridad);
+		}
+		
 		log.info("[ACCION -- /order-proposal/send -- {} Ha enviado el pedido {} correctamente a fábrica con permiso de {} -- {}",usuario.getUSRToken(),uuid,usuario.getRol().getNombre(),seguridad);
 		
 		pedido.setEstado(EstadoPedido.CURSADO);
