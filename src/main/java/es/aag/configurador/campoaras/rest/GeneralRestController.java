@@ -1,7 +1,14 @@
 package es.aag.configurador.campoaras.rest;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +22,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -90,9 +99,50 @@ public class GeneralRestController
 			Usuario usuario = this.security.isAuth(userRepo, "/user", seguridad);
 			
 			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/user", usuario.getUSRToken());
+			File dir = new File(CPConstants.PROFILE_PATH);
 			
-			UserGetDTO response = new UserGetDTO(usuario.getUuid(), this.encryptor.decrypt(usuario.getEmail()), this.encryptor.decrypt(usuario.getUsername()),null,usuario.getDescuento(), usuario.getSegundoDescuento(), null , null, null, usuario.isVerificado());
+			File userImg = null;
 			
+			for(File item:dir.listFiles())
+			{
+				
+				if(item.getName().indexOf(usuario.getUuid()) != -1)
+				{
+					userImg = item;
+					break;
+				}
+			}
+			
+			byte[] dataProfile = null;
+			Resource resource = null;
+			
+			if(userImg.exists())
+			{
+				Path storageRoot = Paths.get(CPConstants.PROFILE_PATH).toAbsolutePath().normalize();
+				try
+				{
+					
+					Path filePath = storageRoot.resolve(userImg.getName()).normalize();
+					resource = new UrlResource(filePath.toUri());
+					
+					if(!resource.exists() || !resource.isReadable())
+					{
+						log.warn("[AVISO] -- {} -- {} Se ha cargado la imagen del usuario {} erroneamente -- {}","/user",usuario.getUSRToken(),usuario.getUSRToken(),seguridad);
+					}
+					else
+					{
+						dataProfile = resource.getContentAsByteArray();
+					}
+				}
+				catch(IOException ex)
+				{
+					log.info("[AVISO] -- /user -- {} Ha habido un error al leer la imagen del usuario, se omite la imagen -- {}",usuario.getUSRToken(),seguridad);
+					dataProfile = null;
+				}
+			}
+			
+			
+			UserGetDTO response = new UserGetDTO(usuario.getUuid(), this.encryptor.decrypt(usuario.getEmail()), this.encryptor.decrypt(usuario.getUsername()),null,usuario.getDescuento(), usuario.getSegundoDescuento(), null , null, null, usuario.isVerificado(),dataProfile);
 			log.info("[ACCION] -- /user -- {} Ha solicitado sus datos de usuario con un permiso de {} -- {}",usuario.getUSRToken(),usuario.getRol().getNombre(),seguridad);
 			
 			return ResponseEntity.ok().body(response);
@@ -109,6 +159,44 @@ public class GeneralRestController
 			log.error("[ERROR] -- /user -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
 			log.error("[DETAILS]",ex);
 			return ResponseEntity.status(500).body("Error interno de servidor");		
+		}
+	}
+	
+	@RequestMapping(method = RequestMethod.POST,value = "/user",consumes="multipart/form-data")
+	public ResponseEntity<?> uploadProfileImg (@RequestPart(value = "img",required = true) MultipartFile img,
+			HttpServletRequest request, Authentication authentication)
+	{
+		try
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			Usuario usuario = this.security.isAuth(userRepo, "/user", seguridad);
+			
+			this.security.hierarchy(rolRepo, usuario.getRol(), CPConstants.CLIENTE_ROLE, seguridad, "/user", usuario.getUSRToken());
+			
+			this.security.validateImg(img, "/user", usuario.getRol().getNombre(), seguridad, usuario.getUSRToken());
+			
+			this.transformFile(img, usuario.getUuid(), usuario.getRol().getNombre(), "/user", usuario.getUSRToken(), seguridad);
+			
+			log.info("[ACCION] {} Ha cambiado su imagen de perfil correctamente -- {}",usuario.getUSRToken(),seguridad);
+			
+			return ResponseEntity.ok().build();
+			
+		}
+		catch(CPException ex)
+		{
+			return ResponseEntity.status(ex.getCode()).body(ex.toMap());
+		}
+		catch(Exception ex)
+		{
+			String ip = this.security.getClientIPAddress(request);
+			String seguridad = this.security.getIpInfo(ip, request);
+			
+			log.error("[ERROR] -- /user -- Error interno de servidor -- {} -- {}",ex.getMessage(),seguridad);
+			log.error("[DETAILS]",ex);
+			return ResponseEntity.status(500).body("Error interno de servidor");		
+
 		}
 	}
 	
@@ -588,6 +676,109 @@ public class GeneralRestController
 			log.error("[DETAILS]",ex);
 			return ResponseEntity.status(500).body("Error interno de servidor");		
 
+		}
+	}
+	
+	private void transformFile(MultipartFile img,String uuid,String rol,String endpoint,String userToken,String seguridad) throws CPException
+	{
+		// FIRMA PNG
+		final byte[] PNG_MAGIC  = {(byte)0x89, 0x50, 0x4E, 0x47};
+		// FIRMA JPEG
+		final byte[] JPEG_MAGIC = {(byte)0xFF, (byte)0xD8, (byte)0xFF};
+		
+		boolean isPng = false;
+		boolean isJpg = true;
+		
+		// PRIMERO SE BUSCA SI EXISTE UN FICHERO CON UN UUID EXISTENTE Y SE BORRA
+		
+		File dir = new File(CPConstants.IMG_PATH);
+		
+		File file = null;
+		
+		for(File item:dir.listFiles())
+		{
+			
+			if(item.getName().indexOf(uuid) != -1)
+			{
+				file = item;
+				break;
+			}
+		}
+		
+		if(file!=null)
+		{
+			file.delete();
+		}
+		
+		try
+		{
+			InputStream is = img.getInputStream();
+			byte[] header = is.readNBytes(4);
+			
+			
+			// Comprobación de las cabeceras del fichero, deben de coincidir con el magic number de un PNG si no coincide da false
+			isPng = header.length >= 4 
+					&& header[0] == PNG_MAGIC[0] && header[1] == PNG_MAGIC[1]
+					&& header[2] == PNG_MAGIC[2] && header[3] == PNG_MAGIC[3];
+			
+			isJpg = header.length >= 3
+		            && header[0] == JPEG_MAGIC[0] && header[1] == JPEG_MAGIC[1]
+		            && header[2] == JPEG_MAGIC[2];
+		}
+		catch(IOException ex)
+		{
+			log.error("[ERROR] -- {} -- {} Ha saltado un error IOException al leer los bytes del fichero -- {}",endpoint,userToken,seguridad);
+			isPng = false;
+			isJpg = false;
+		}
+		catch(IndexOutOfBoundsException ex)
+		{
+			log.warn("[ERROR] -- {} -- {} Ha saltado un error IndexOutOfBoundsException debido a que el fichero no posee el número de bytes necesario (4) para la validación de un magic number -- {}",endpoint,userToken,seguridad);
+			isPng = false;
+			isJpg = false;
+		}
+		
+		// Ternario para establecer si el archivo es png o jpg 
+		String header = isPng ? ".png" : "";
+		header = isJpg ? ".jpg" : header;
+		
+		String filename = uuid+header;
+		
+		Path storageRoot = Paths.get(CPConstants.PROFILE_PATH).toAbsolutePath().normalize();
+		Path destination = storageRoot.resolve(filename).normalize();
+		
+		if(!destination.startsWith(storageRoot))
+		{
+			log.warn("[AVISO] -- {} -- {} Ha intentado realizar un path traversal al incluir una imagen con permiso de {} -- {}",endpoint,userToken,rol,seguridad);
+			throw new CPException(404,"Datos invalidos");
+		}
+		InputStream is = null;
+		try
+		{
+			is = img.getInputStream();
+			// Escritura del fichero y sobreescritura en caso de que exista para evitar errores
+			Files.copy(is, destination,StandardCopyOption.REPLACE_EXISTING);
+		}
+		catch(IOException ex)
+		{
+			log.error("[ERROR] -- {} -- {} Ha saltado un error IOException al escribit con InputStream la imagen subida mediante POST -- {}",endpoint,userToken,seguridad);
+			log.error("[DETAILS] {}",ex.getMessage());
+			throw new CPException(500,"Error de servidor");
+		}
+		finally
+		{
+			if(is!=null)
+			{
+				try
+				{
+					is.close();
+				}
+				catch(IOException ex)
+				{
+					log.error("[ERROR] -- {} -- {} Ha saltado un error IOException por cerrar erroneamente un InputStream -- {}",endpoint,userToken,seguridad);
+					throw new CPException(500,"Error de servidor");
+				}
+			}
 		}
 	}
 	

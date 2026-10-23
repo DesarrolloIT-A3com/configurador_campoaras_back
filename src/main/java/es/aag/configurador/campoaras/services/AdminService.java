@@ -269,7 +269,7 @@ public class AdminService
 		
 		for(Usuario user:usuarios)
 		{
-			UserGetDTO dto = new UserGetDTO(user.getUuid(),this.encryptor.decrypt(user.getEmail()),this.encryptor.decrypt(user.getUsername()),null,user.getDescuento(),user.getSegundoDescuento(),this.encryptor.decrypt(user.getComercial()),user.getAcceso(),user.getRol().getNombre(),!user.getRol().getNombre().equals(CPConstants.VER_ROLE));
+			UserGetDTO dto = new UserGetDTO(user.getUuid(),this.encryptor.decrypt(user.getEmail()),this.encryptor.decrypt(user.getUsername()),null,user.getDescuento(),user.getSegundoDescuento(),this.encryptor.decrypt(user.getComercial()),user.getAcceso(),user.getRol().getNombre(),!user.getRol().getNombre().equals(CPConstants.VER_ROLE),null);
 			
 			String comercialEmail = this.encryptor.decrypt(usuario.getEmail());
 			String userEmail = "";
