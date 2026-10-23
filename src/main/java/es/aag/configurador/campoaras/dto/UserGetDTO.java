@@ -28,4 +28,6 @@ public class UserGetDTO
 	private String rol;
 	
 	private boolean verificado;
+	
+	private byte[] imgProfile;
 }

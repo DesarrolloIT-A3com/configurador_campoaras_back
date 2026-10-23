@@ -27,6 +27,7 @@ public final class CPConstants
 	// RUTAS
     public static final String ENV_PATH = "./src/main/resources/.env";
     public static final String IMG_PATH = "./src/main/resources/imgs";
+    public static final String PROFILE_PATH = "./src/main/resources/profiles";
     public static final String [] ROUTES_SWAGGER = {"/swagger-ui.html","/swagger-ui/**","/v3/api-docs/**","/v3/api-docs.yaml","/openapi/**"};
     public static final String [] ROUTES_JWT = {"/v1/auth/login","/v1/auth/register","/v1/auth/refresh","/v1/auth/verify/**","/v1/auth/forget-password/**","/v1/auth/reset-password/**"};
     
