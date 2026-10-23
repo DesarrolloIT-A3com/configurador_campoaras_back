@@ -116,7 +116,7 @@ public class GeneralRestController
 			byte[] dataProfile = null;
 			Resource resource = null;
 			
-			if(userImg.exists())
+			if(userImg!=null && userImg.exists())
 			{
 				Path storageRoot = Paths.get(CPConstants.PROFILE_PATH).toAbsolutePath().normalize();
 				try
