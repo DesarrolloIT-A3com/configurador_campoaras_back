@@ -29,7 +29,6 @@
 	<properties>
 		<java.version>21</java.version>
 		<tomcat.version>11.0.27</tomcat.version>
-    	<mysql.version>26.10.0</mysql.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -172,10 +171,10 @@
 		<resources>
 		    <resource>
 		      <directory>src/main/resources/</directory>
-		      <includes>
-		        <include>**/*</include>
-		        <include>.env</include>
-		      </includes>
+		      <excludes>
+		        <exclude>**/*</exclude>
+		        <exclude>.env</exclude>
+		      </excludes>
 		    </resource>
 	  	</resources>
 	</build>
